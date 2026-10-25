@@ -43,8 +43,13 @@ static void sw_audio_cb(lv_event_t * e) {
   }
 }
 
+static unsigned long previewUntilMs = 0;
+
 static void pet_touch_cb(lv_event_t * e) {
   soundFx.playChirp();
+  // Interactive Showcase: tapping the pet cycles stages for 5 seconds
+  previewUntilMs = millis() + 5000;
+  cyberUI.triggerEvolutionFanfare(-1);
 }
 
 void CyberUI::setBacklightCallback(void (*cb)(int)) { onBacklightChange = cb; }
@@ -417,50 +422,129 @@ void CyberUI::buildDeckTab(lv_obj_t* parent) {
   lv_obj_center(lblPoll);
 }
 
+static lv_color_t resolveSpriteColor(char code) {
+  switch (code) {
+    case '1': return lv_color_hex(0x05070B); // Obsidian Outline
+    case '2': return lv_color_hex(0x005533); // Deep Emerald Shadow
+    case '3': return lv_color_hex(0x00CC66); // Matrix Green Midtone
+    case '4': return lv_color_hex(0x66FFBB); // Neon Mint Highlight
+    case '5': return lv_color_hex(0xFFFFFF); // Pure Specular White
+    case '6': return lv_color_hex(0x003888); // Deep Cobalt Shadow
+    case '7': return lv_color_hex(0x00BBFF); // Electric Cyan Midtone
+    case '8': return lv_color_hex(0x88FFFF); // Laser Ice Cyan
+    case '9': return lv_color_hex(0xCC22FF); // Neon Violet Aura
+    case 'A': return lv_color_hex(0x4A1208); // Dark Magma / Rust
+    case 'B': return lv_color_hex(0xEE1144); // Molten Crimson
+    case 'C': return lv_color_hex(0xFF6600); // Blazing Orange
+    case 'D': return lv_color_hex(0xFFDD00); // Solar Gold / Yellow
+    case 'E': return lv_color_hex(0x3A4659); // Dark Stone / Gunmetal
+    case 'F': return lv_color_hex(0x8FA3B8); // Light Stone / Bone
+    default:  return CYBER_COLOR_PANEL;
+  }
+}
+
 void CyberUI::drawSpriteOnCanvas(int stage, int scale) {
-  // Clear canvas buffer to dark slate
-  lv_canvas_fill_bg(petCanvas, CYBER_COLOR_PANEL, LV_OPA_COVER);
+  if (!petCanvas) return;
 
-  const uint8_t* bmpData = ep_ai_slime;
-  lv_color_t fgColor = CYBER_COLOR_GREEN;
+  // 1. Render Cyber-Sanctuary Background & Subtle Grid (72x72)
+  lv_color_t bgBase = lv_color_hex(0x090E1A);
+  lv_color_t bgGrid = lv_color_hex(0x131D33);
+  lv_color_t pedColor = CYBER_COLOR_GREEN;
+  if (stage == 1) pedColor = CYBER_COLOR_CYAN;
+  else if (stage == 2) pedColor = CYBER_COLOR_AMBER;
+  else if (stage >= 3) pedColor = CYBER_COLOR_RED;
 
-  switch (stage) {
-    case 0:
-      bmpData = ep_ai_slime;
-      fgColor = CYBER_COLOR_GREEN;
-      break;
-    case 1:
-      bmpData = ep_ai_phantom;
-      fgColor = CYBER_COLOR_CYAN;
-      break;
-    case 2:
-      bmpData = ep_ai_daemon;
-      fgColor = CYBER_COLOR_AMBER;
-      break;
-    default:
-      bmpData = ep_ai_tomb;
-      fgColor = CYBER_COLOR_RED;
-      break;
+  for (int y = 0; y < 72; y++) {
+    for (int x = 0; x < 72; x++) {
+      bool isGrid = (x % 12 == 0) || (y % 12 == 0);
+      lv_canvas_set_px(petCanvas, x, y, isGrid ? bgGrid : bgBase, LV_OPA_COVER);
+    }
   }
 
-  // Draw 24x24 bitmap scaled by 3 into 72x72 canvas
+  // 2. Render Holographic Projection Pedestal Ring at bottom (y = 62..67)
+  int ringWidth = (animOffset % 2 == 0) ? 24 : 21;
+  for (int dx = -ringWidth; dx <= ringWidth; dx++) {
+    int px = 36 + dx;
+    if (px >= 2 && px < 70) {
+      lv_canvas_set_px(petCanvas, px, 64, pedColor, LV_OPA_COVER);
+      if (abs(dx) < ringWidth - 5) {
+        lv_canvas_set_px(petCanvas, px, 65, pedColor, LV_OPA_COVER);
+      }
+    }
+  }
+
+  // 3. Select Dual-Frame Multi-Color Sprite Matrix
+  bool altFrame = (animOffset % 2) == 1;
+  const char* const* spriteMap = sprite_slime_f0;
+  switch (stage) {
+    case 0: spriteMap = altFrame ? sprite_slime_f1   : sprite_slime_f0;   break;
+    case 1: spriteMap = altFrame ? sprite_phantom_f1 : sprite_phantom_f0; break;
+    case 2: spriteMap = altFrame ? sprite_daemon_f1  : sprite_daemon_f0;  break;
+    default: spriteMap = altFrame ? sprite_tomb_f1   : sprite_tomb_f0;    break;
+  }
+
+  // 4. Draw 24x24 Shaded Pixel Art at 3x Scale (72x72)
   for (int r = 0; r < 24; r++) {
+    const char* rowStr = spriteMap[r];
     for (int c = 0; c < 24; c++) {
-      int byteIdx = r * 3 + (c >> 3);
-      uint8_t b = pgm_read_byte(&bmpData[byteIdx]);
-      if ((b >> (c & 7)) & 1) {
+      char code = rowStr[c];
+      if (code != '.' && code != '\0') {
+        lv_color_t pixColor = resolveSpriteColor(code);
         for (int dy = 0; dy < scale; dy++) {
           for (int dx = 0; dx < scale; dx++) {
-            lv_canvas_set_px(petCanvas, c * scale + dx, r * scale + dy, fgColor, LV_OPA_COVER);
+            lv_canvas_set_px(petCanvas, c * scale + dx, r * scale + dy, pixColor, LV_OPA_COVER);
           }
         }
       }
     }
   }
+
+  // 5. Render Floating Cyber-Particles Rising in Sanctuary
+  static const uint8_t pCols[4] = { 10, 58, 16, 62 };
+  for (int i = 0; i < 4; i++) {
+    int py = 60 - ((animOffset * 5 + i * 15) % 54);
+    int px = pCols[i] + ((animOffset + i) % 3) - 1;
+    if (px >= 2 && px < 70 && py >= 2 && py < 68) {
+      lv_canvas_set_px(petCanvas, px, py, pedColor, LV_OPA_COVER);
+      lv_canvas_set_px(petCanvas, px + 1, py, pedColor, LV_OPA_COVER);
+    }
+  }
+}
+
+void CyberUI::triggerEvolutionFanfare(int stage) {
+  if (stage < 0) {
+    currentStage = (currentStage + 1) % 4;
+  } else {
+    currentStage = stage;
+  }
+  drawSpriteOnCanvas(currentStage);
+  switch (currentStage) {
+    case 0:
+      lv_label_set_text(petStageLabel, "AI: BIT-SLIME (IDLE)");
+      lv_obj_set_style_text_color(petStageLabel, CYBER_COLOR_GREEN, 0);
+      break;
+    case 1:
+      lv_label_set_text(petStageLabel, "AI: PHANTOM-NODE");
+      lv_obj_set_style_text_color(petStageLabel, CYBER_COLOR_CYAN, 0);
+      break;
+    case 2:
+      lv_label_set_text(petStageLabel, "AI: DAEMON-CORE (HOT)");
+      lv_obj_set_style_text_color(petStageLabel, CYBER_COLOR_AMBER, 0);
+      break;
+    default:
+      lv_label_set_text(petStageLabel, "AI: 404 TOMBSTONE");
+      lv_obj_set_style_text_color(petStageLabel, CYBER_COLOR_RED, 0);
+      break;
+  }
+}
+
+void CyberUI::tickAnimation() {
+  animOffset++;
+  drawSpriteOnCanvas(currentStage < 0 ? 3 : currentStage);
 }
 
 void CyberUI::init() {
-  currentStage = -1;
+  currentStage = 3;
   animOffset = 0;
   canvasBuffer = nullptr;
   createStyles();
@@ -483,34 +567,17 @@ void CyberUI::update(const DigiviceTelemetry& data) {
   snprintf(buf, sizeof(buf), "WIFI: %ddBm", data.wifiRssi);
   lv_label_set_text(headerLabelWifi, buf);
 
-  // 2. Stage calculation
-  int newStage = 3; // Offline
-  if (data.serverOnline) {
-    if (data.cpu < 30.0f) newStage = 0;
-    else if (data.cpu < 70.0f) newStage = 1;
-    else newStage = 2;
-  }
+  // 2. Stage calculation (respect 5-second interactive touch showcase if active)
+  if (millis() >= previewUntilMs) {
+    int newStage = 3; // Offline
+    if (data.serverOnline) {
+      if (data.cpu < 30.0f) newStage = 0;
+      else if (data.cpu < 70.0f) newStage = 1;
+      else newStage = 2;
+    }
 
-  if (newStage != currentStage) {
-    currentStage = newStage;
-    drawSpriteOnCanvas(currentStage);
-    switch (currentStage) {
-      case 0:
-        lv_label_set_text(petStageLabel, "AI: BIT-SLIME (IDLE)");
-        lv_obj_set_style_text_color(petStageLabel, CYBER_COLOR_GREEN, 0);
-        break;
-      case 1:
-        lv_label_set_text(petStageLabel, "AI: PHANTOM-NODE");
-        lv_obj_set_style_text_color(petStageLabel, CYBER_COLOR_CYAN, 0);
-        break;
-      case 2:
-        lv_label_set_text(petStageLabel, "AI: DAEMON-CORE (HOT)");
-        lv_obj_set_style_text_color(petStageLabel, CYBER_COLOR_AMBER, 0);
-        break;
-      default:
-        lv_label_set_text(petStageLabel, "AI: 404 TOMBSTONE");
-        lv_obj_set_style_text_color(petStageLabel, CYBER_COLOR_RED, 0);
-        break;
+    if (newStage != currentStage) {
+      triggerEvolutionFanfare(newStage);
     }
   }
 

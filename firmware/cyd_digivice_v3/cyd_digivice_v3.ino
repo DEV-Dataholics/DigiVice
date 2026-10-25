@@ -309,15 +309,22 @@ void loop() {
   // 1. Tick LVGL Engine
   lv_timer_handler();
 
-  // 2. Periodically or On-Demand Poll K-2SO Node
+  // 2. Tick Multi-Color Pet Sprite & Sanctuary Animation (350ms cadence)
+  static unsigned long lastAnimTick = 0;
   unsigned long now = millis();
+  if (now - lastAnimTick >= 350) {
+    lastAnimTick = now;
+    cyberUI.tickAnimation();
+  }
+
+  // 3. Periodically or On-Demand Poll K-2SO Node
   if (now - lastMetricsPoll >= POLL_INTERVAL_MS || forcePollNow) {
     lastMetricsPoll = now;
     forcePollNow = false;
     pollK2soMetrics();
   }
 
-  // 3. Update Hardware RGB reactive Underglow
+  // 4. Update Hardware RGB reactive Underglow
   updateRgbUnderglow();
 
   delay(5);

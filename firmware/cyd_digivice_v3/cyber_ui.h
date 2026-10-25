@@ -41,6 +41,7 @@ class CyberUI {
 public:
   void init();
   void update(const DigiviceTelemetry& data);
+  void tickAnimation();
   void triggerEvolutionFanfare(int stage);
   void setBacklightCallback(void (*cb)(int));
   void setManualPollCallback(void (*cb)());
