@@ -6,6 +6,7 @@
 
 #include "cyd_display.h"
 #include "audio_synth.h"
+#include "sprites.h"
 #include "cyber_ui.h"
 
 // ============================================================================
@@ -119,6 +120,139 @@ void updateRgbUnderglow() {
 }
 
 // ============================================================================
+// Full-Screen 320x240 Hardware Gundam Event Cutscene Engine
+// fxType: 0 = TWIN BUSTER LASER, 1 = G-FRAME EVOLUTION, 2 = BEAM SABER, 3 = EMP
+// ============================================================================
+
+static uint16_t resolveGfxColor(char code) {
+  switch (code) {
+    case '1': return gfx.color565(0x05, 0x07, 0x0B);
+    case '2': return gfx.color565(0x00, 0x55, 0x33);
+    case '3': return gfx.color565(0x00, 0xCC, 0x66);
+    case '4': return gfx.color565(0x66, 0xFF, 0xBB);
+    case '5': return gfx.color565(0xFF, 0xFF, 0xFF);
+    case '6': return gfx.color565(0x00, 0x38, 0x88);
+    case '7': return gfx.color565(0x00, 0xBB, 0xFF);
+    case '8': return gfx.color565(0x88, 0xFF, 0xFF);
+    case '9': return gfx.color565(0xCC, 0x22, 0xFF);
+    case 'A': return gfx.color565(0x4A, 0x12, 0x08);
+    case 'B': return gfx.color565(0xEE, 0x11, 0x44);
+    case 'C': return gfx.color565(0xFF, 0x66, 0x00);
+    case 'D': return gfx.color565(0xFF, 0xDD, 0x00);
+    case 'E': return gfx.color565(0x3A, 0x46, 0x59);
+    case 'F': return gfx.color565(0x8F, 0xA3, 0xB8);
+    default:  return gfx.color565(0x05, 0x08, 0x11);
+  }
+}
+
+static void drawGfxSpriteScaled(int stage, int frame, int ox, int oy, int scale, int32_t overrideCol = -1) {
+  const char* const* spriteMap = sprite_slime_f0;
+  bool alt = (frame % 2) == 1;
+  switch (stage) {
+    case 0: spriteMap = alt ? sprite_slime_f1   : sprite_slime_f0;   break;
+    case 1: spriteMap = alt ? sprite_phantom_f1 : sprite_phantom_f0; break;
+    case 2: spriteMap = alt ? sprite_daemon_f1  : sprite_daemon_f0;  break;
+    default: spriteMap = alt ? sprite_tomb_f1   : sprite_tomb_f0;    break;
+  }
+  for (int r = 0; r < 24; r++) {
+    const char* row = spriteMap[r];
+    for (int c = 0; c < 24; c++) {
+      char ch = row[c];
+      if (ch != '.' && ch != '\0') {
+        uint16_t col = (overrideCol >= 0) ? (uint16_t)overrideCol : resolveGfxColor(ch);
+        gfx.fillRect(ox + c * scale, oy + r * scale, scale, scale, col);
+      }
+    }
+  }
+}
+
+void triggerGundamCutscene(uint8_t fxType, int fromS, int toS) {
+  uint16_t colBg      = gfx.color565(0x05, 0x08, 0x11);
+  uint16_t colSpeed   = gfx.color565(0x11, 0x22, 0x38);
+  uint16_t colCyan    = gfx.color565(0x00, 0xF0, 0xFF);
+  uint16_t colGold    = gfx.color565(0xFF, 0xDD, 0x00);
+  uint16_t colMint    = gfx.color565(0x66, 0xFF, 0xBB);
+  uint16_t colGreen   = gfx.color565(0x00, 0xFF, 0x88);
+  uint16_t colMagenta = gfx.color565(0xFF, 0x00, 0x7F);
+  uint16_t colRed     = gfx.color565(0xFF, 0x2A, 0x55);
+  uint16_t colWhite   = 0xFFFF;
+
+  gfx.startWrite();
+  for (int t = 0; t < 18; t++) {
+    gfx.fillScreen(colBg);
+
+    // Anime horizontal speedlines
+    for (int i = 0; i < 20; i++) {
+      int ly = (i * 11 + t * 9) % 188 + 26;
+      int lx = ((i * 53 - t * 40) % 320 + 320) % 320;
+      gfx.fillRect(lx, ly, 36, 2, colSpeed);
+    }
+
+    if (fxType == 0) {
+      // TWIN BUSTER LASER CUTSCENE (Omega RX-Gundam)
+      gfx.fillRect(0, 0, 320, 24, gfx.color565(0x2A, 0x08, 0x10));
+      gfx.fillRect(0, 216, 320, 24, gfx.color565(0x2A, 0x08, 0x10));
+      gfx.setTextColor(colGold);
+      gfx.setCursor(10, 7);
+      gfx.print("WARNING: ZERO-SYSTEM // TWIN BUSTER LASER");
+      gfx.setTextColor(colCyan);
+      gfx.setCursor(14, 223);
+      gfx.print("HYPER-MEGA CANNON: MAXIMUM OUTPUT");
+
+      int shakeX = (t >= 5 && (t % 2 == 0)) ? -3 : 0;
+      drawGfxSpriteScaled(2, t % 2, 8 + shakeX, 56, 5);
+
+      int muzzleX = 112;
+      int muzzleY = 118;
+      if (t < 5) {
+        int rad = 6 + t * 5;
+        gfx.drawCircle(muzzleX, muzzleY, rad, colCyan);
+        gfx.fillCircle(muzzleX, muzzleY, rad - 3, (t % 2 == 0) ? colGold : colMint);
+      } else {
+        int beamEnd = min(320, muzzleX + (t - 4) * 52);
+        int beamW = beamEnd - muzzleX;
+        int jit = (t % 2 == 0) ? 3 : -3;
+
+        gfx.fillRect(muzzleX, muzzleY - 34 + jit, beamW, 68, (t % 2 == 0) ? colCyan : colMagenta);
+        gfx.fillRect(muzzleX, muzzleY - 22 - jit, beamW, 44, (t % 2 == 0) ? colGreen : colGold);
+        gfx.fillRect(muzzleX, muzzleY - 10, beamW, 20, colWhite);
+
+        for (int r = 0; r < 3; r++) {
+          int rx = muzzleX + ((t * 24 + r * 64) % 190);
+          if (rx < beamEnd) {
+            gfx.drawRect(rx, muzzleY - 38, 6, 76, colWhite);
+          }
+        }
+      }
+    } else if (fxType == 1) {
+      // G-FRAME EVOLUTION CUT-IN
+      gfx.fillRect(0, 0, 320, 24, gfx.color565(0x0A, 0x19, 0x2F));
+      gfx.fillRect(0, 216, 320, 24, gfx.color565(0x0A, 0x19, 0x2F));
+      gfx.setTextColor(colCyan);
+      gfx.setCursor(18, 7);
+      gfx.print("/// G-FRAME EVOLUTION // MOBILE SUIT ///");
+      gfx.drawRect(160 - t * 7, 120 - t * 4, t * 14, t * 8, (t % 2 == 0) ? colCyan : colGold);
+      int curS = (t > 9 || (t % 2 == 0)) ? toS : fromS;
+      int32_t flash = (t >= 6 && t <= 10 && (t % 2 == 1)) ? (int32_t)colWhite : -1;
+      drawGfxSpriteScaled(curS, t % 2, 100, 56, 5, flash);
+    } else {
+      // RED ALERT / BEAM SABER
+      gfx.fillRect(0, 0, 320, 24, colRed);
+      gfx.fillRect(0, 216, 320, 24, colRed);
+      gfx.setTextColor(colWhite);
+      gfx.setCursor(20, 7);
+      gfx.print("!!! TACTICAL INTERCEPT // ALERT !!!");
+      drawGfxSpriteScaled(2, t % 2, 100, 56, 5, (t % 2 == 0) ? (int32_t)colRed : -1);
+    }
+    delay(65);
+  }
+  gfx.endWrite();
+
+  // Force LVGL to repaint the full 320x240 HUD after the cutscene completes
+  lv_obj_invalidate(lv_screen_active());
+}
+
+// ============================================================================
 // Network & Telemetry Poller
 // ============================================================================
 
@@ -172,17 +306,23 @@ void pollK2soMetrics() {
         }
       }
 
-      // Check Acoustic Events
+      // Check Acoustic & Full-Screen Cutscene Events
       if (telemetry.circuitBreakerTripped && !prevCircuitBreaker) {
         soundFx.playCircuitBreakerAlert();
+        triggerGundamCutscene(3, 2, 2);
       } else if (telemetry.missionActive && !prevMissionActive) {
         soundFx.playGatePass();
       }
 
-      // Track Stage Evolutions
+      // Track Stage Evolutions & Fire Full-Screen Gundam Cutscenes
       int curStage = (telemetry.cpu < 30.0f) ? 0 : ((telemetry.cpu < 70.0f) ? 1 : 2);
       if (prevStage != -1 && curStage > prevStage) {
         soundFx.playEvolutionArpeggio();
+        if (curStage == 2) {
+          triggerGundamCutscene(0, prevStage, curStage); // Full-Screen Twin Buster Laser!
+        } else {
+          triggerGundamCutscene(1, prevStage, curStage); // Full-Screen G-Frame Evolution!
+        }
       }
       prevStage = curStage;
       prevMissionActive = telemetry.missionActive;

@@ -511,9 +511,19 @@ void CyberUI::drawSpriteOnCanvas(int stage, int scale) {
   }
 }
 
+extern void triggerGundamCutscene(uint8_t fxType, int fromS, int toS);
+
 void CyberUI::triggerEvolutionFanfare(int stage) {
-  if (stage < 0) {
+  int prevS = currentStage < 0 ? 0 : currentStage;
+  bool manualTap = (stage < 0);
+  if (manualTap) {
     currentStage = (currentStage + 1) % 4;
+    if (currentStage == 1) {
+      triggerGundamCutscene(1, prevS, 1); // Full-Screen G-Frame Evolution!
+    } else if (currentStage == 2) {
+      soundFx.playEvolutionArpeggio();
+      triggerGundamCutscene(0, prevS, 2); // Full-Screen Twin Buster Laser!
+    }
   } else {
     currentStage = stage;
   }
