@@ -66,8 +66,11 @@ static void btn_haro_cb(lv_event_t * e) {
 }
 
 static void btn_evo_cb(lv_event_t * e) {
+  static uint8_t nextBootIdx = 0;
   soundFx.playEvolutionArpeggio();
-  triggerGundamCutscene(4, 0, 0); // Replay Dataholics Boot Screen!
+  uint8_t fx = 4 + (nextBootIdx % 3); // Cycles 4 (Editorial B), 5 (Mecha A), 6 (Haro C)
+  nextBootIdx++;
+  triggerGundamCutscene(fx, 0, 0);
 }
 
 void CyberUI::setBacklightCallback(void (*cb)(int)) { onBacklightChange = cb; }

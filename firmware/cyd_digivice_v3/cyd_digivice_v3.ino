@@ -373,6 +373,136 @@ void triggerGundamCutscene(uint8_t fxType, int fromS, int toS) {
       // Bottom Edge Sweeping Orange Progress Hairline (0..320px)
       int progW = min(320, (t + 1) * 18);
       gfx.fillRect(0, 237, progW, 3, colOrange);
+    } else if (fxType == 5) {
+      // OPTION A: THE SOVEREIGN MECHA OS BOOT (GUNDAM BIOS + EXECUTIVE HUD)
+      uint16_t colDark   = gfx.color565(0x05, 0x07, 0x0B);
+      uint16_t colOrange = gfx.color565(0xFF, 0x73, 0x00);
+      uint16_t colHazard = gfx.color565(0x1C, 0x0D, 0x04);
+
+      gfx.fillScreen(colDark);
+
+      // Top & Bottom Hazard Tactical Bars
+      gfx.fillRect(0, 0, 320, 22, colHazard);
+      gfx.fillRect(0, 218, 320, 22, colHazard);
+      gfx.fillRect(0, 21, 320, 2, colOrange);
+      gfx.fillRect(0, 217, 320, 2, colOrange);
+
+      gfx.setTextSize(1);
+      gfx.setTextColor(colOrange);
+      gfx.setCursor(16, 7);
+      gfx.print("/// G-FRAME BIOS v3.0 // SOVEREIGN IGNITION ///");
+      gfx.setTextColor(colGreen);
+      gfx.setCursor(44, 225);
+      gfx.print("NODE: K-2SO [192.168.1.40] // ONLINE");
+
+      int cx = 160;
+      int cy = 62;
+      if (t < 4) {
+        gfx.drawRect(160 - (t + 1) * 28, 30, (t + 1) * 56, 64, colOrange);
+      }
+      gfx.drawRect(98, 28, 124, 68, colCyan);
+
+      // Dataholics Split-Wing Emblem with ignition flash on t == 3
+      uint16_t embCol = (t == 3 || t == 4) ? colWhite : colOrange;
+      gfx.fillTriangle(cx - 44, cy - 21, cx - 5, cy - 28, cx - 5, cy + 28, embCol);
+      gfx.fillTriangle(cx - 44, cy - 21, cx - 5, cy + 28, cx - 44, cy + 21, embCol);
+      gfx.fillTriangle(cx + 5, cy - 28, cx + 44, cy - 21, cx + 44, cy + 21, embCol);
+      gfx.fillTriangle(cx + 5, cy - 28, cx + 44, cy + 21, cx + 5, cy + 28, embCol);
+      gfx.fillCircle(cx - 24, cy, 12, colDark);
+      gfx.fillCircle(cx + 24, cy, 12, colDark);
+      gfx.fillRect(cx - 24, cy - 5, 48, 10, colDark);
+
+      gfx.setTextSize(2);
+      gfx.setTextColor(colWhite);
+      gfx.setCursor(52, 104);
+      gfx.print("D A T A H O L I C S");
+
+      gfx.setTextSize(1);
+      gfx.setTextColor(colCyan);
+      gfx.setCursor(58, 126);
+      gfx.print("TiRA AUTONOMOUS SYSTEM // CORE");
+
+      // Executive Biometric Clearance Box
+      gfx.fillRect(18, 140, 284, 38, gfx.color565(0x14, 0x0C, 0x08));
+      gfx.drawRect(18, 140, 284, 38, colGold);
+      gfx.setTextColor(colGold);
+      gfx.setCursor(52, 148);
+      gfx.print("* LUIS MORALES DEVICE [MY CTO] *");
+      gfx.setTextColor(colMint);
+      gfx.setCursor(48, 163);
+      gfx.print("BIOMETRIC AUTH: VERIFIED // LEVEL 0");
+
+      // 14-Segment Orange Boot Bar
+      int pct = min(100, ((t + 1) * 100) / 18);
+      gfx.setTextColor(colOrange);
+      gfx.setCursor(18, 192);
+      gfx.printf("BOOTING OS: %d%%", pct);
+      int activeSegs = ((t + 1) * 14) / 18;
+      for (int s = 0; s < 14; s++) {
+        uint16_t sCol = (s < activeSegs) ? colOrange : gfx.color565(0x1B, 0x24, 0x38);
+        gfx.fillRect(128 + s * 12, 189, 9, 11, sCol);
+      }
+    } else if (fxType == 6) {
+      // OPTION C: THE HARO & GUNDAM HANGAR WAKE-UP (INTERACTIVE MECHA BOOT)
+      uint16_t colDark   = gfx.color565(0x06, 0x0A, 0x12);
+      uint16_t colCard   = gfx.color565(0x0C, 0x13, 0x22);
+      uint16_t colGrid   = gfx.color565(0x11, 0x1C, 0x2D);
+      uint16_t colOrange = gfx.color565(0xFF, 0x73, 0x00);
+
+      gfx.fillScreen(colDark);
+      for (int gx = 0; gx < 320; gx += 20) gfx.drawFastVLine(gx, 0, 240, colGrid);
+      for (int gy = 0; gy < 240; gy += 20) gfx.drawFastHLine(0, gy, 320, colGrid);
+
+      // Left Card: Dataholics Emblem + TiRA System + Luis Morales Badge
+      gfx.fillRect(10, 12, 176, 186, colCard);
+      gfx.drawRect(10, 12, 176, 186, colOrange);
+
+      int cx = 98;
+      int cy = 54;
+      gfx.fillTriangle(cx - 40, cy - 19, cx - 5, cy - 25, cx - 5, cy + 25, colOrange);
+      gfx.fillTriangle(cx - 40, cy - 19, cx - 5, cy + 25, cx - 40, cy + 19, colOrange);
+      gfx.fillTriangle(cx + 5, cy - 25, cx + 40, cy - 19, cx + 40, cy + 19, colOrange);
+      gfx.fillTriangle(cx + 5, cy - 25, cx + 40, cy + 19, cx + 5, cy + 25, colOrange);
+      gfx.fillCircle(cx - 22, cy, 11, colCard);
+      gfx.fillCircle(cx + 22, cy, 11, colCard);
+      gfx.fillRect(cx - 22, cy - 4, 44, 8, colCard);
+
+      gfx.setTextSize(1);
+      gfx.setTextColor(colWhite);
+      gfx.setCursor(40, 96);
+      gfx.print("D A T A H O L I C S");
+
+      gfx.setTextColor(colCyan);
+      gfx.setCursor(48, 116);
+      gfx.print("TiRA SYSTEM v3.0");
+
+      gfx.fillRect(20, 134, 156, 48, gfx.color565(0x1A, 0x12, 0x0B));
+      gfx.drawRect(20, 134, 156, 48, colGold);
+      gfx.setTextColor(colGold);
+      gfx.setCursor(60, 145);
+      gfx.print("LUIS MORALES");
+      gfx.setTextColor(colGreen);
+      gfx.setCursor(32, 164);
+      gfx.print("EXECUTIVE DEVICE [CTO]");
+
+      // Right Side: Bouncing HARO + Waking Gundam in Hangar!
+      int bounce = (t % 4 == 1 || t % 4 == 2) ? 10 : 0;
+      drawGfxSpriteScaled(4, (bounce > 0) ? 1 : 0, 212, 14 - bounce, 3);
+
+      gfx.fillRect(194, 84, 116, 20, gfx.color565(0x06, 0x33, 0x1A));
+      gfx.drawRect(194, 84, 116, 20, colGreen);
+      gfx.setTextColor(colMint);
+      gfx.setCursor(204, 90);
+      gfx.print((t % 2 == 0) ? "\"HELLO MY CTO!\"" : "\"TiRA ONLINE!\"");
+
+      drawGfxSpriteScaled(1, t % 2, 214, 112, 3, (t < 6 && t % 2 == 0) ? (int32_t)colCyan : -1);
+
+      // Bottom Full-Width Status Strip
+      gfx.fillRect(10, 206, 300, 24, gfx.color565(0x13, 0x1A, 0x29));
+      gfx.drawRect(10, 206, 300, 24, colCyan);
+      gfx.setTextColor(colOrange);
+      gfx.setCursor(38, 214);
+      gfx.print(">>> HANGAR READY // K-2SO TETHERED <<<");
     } else {
       // RED ALERT / CIRCUIT BREAKER EMP
       gfx.fillRect(0, 0, 320, 24, colRed);
@@ -540,9 +670,11 @@ void setup() {
   // Quick boot pattern to clear any old vendor display data
   gfx.fillScreen(TFT_BLACK);
 
-  // Play Option B: Dataholics // TiRA System // Luis Morales Device Boot Sequence
+  // Play Shuffled Dataholics // TiRA System // Luis Morales Device Boot Sequence (A, B, or C!)
   soundFx.playEvolutionArpeggio();
-  triggerGundamCutscene(4, 0, 0);
+  uint8_t randomBootFx = 4 + (esp_random() % 3); // 4 = Editorial B, 5 = Mecha A, 6 = Haro C
+  Serial.printf("[BOOT] Selected Shuffled Boot Sequence FX #%d\n", randomBootFx);
+  triggerGundamCutscene(randomBootFx, 0, 0);
 
   // 4. Setup LVGL (v9.x)
   lv_init();

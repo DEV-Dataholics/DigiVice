@@ -46,23 +46,28 @@
           <span class="text-xs font-semibold uppercase tracking-wider text-rose-400">⚡ Full-Screen Event Cutscenes</span>
           <span class="text-xs text-[var(--muted-foreground)] font-mono">320x240 Overlay</span>
         </div>
-        <div class="grid grid-cols-2 gap-1.5 text-xs">
-          <button id="btnFxBoot" class="px-2 py-1.5 rounded bg-orange-500/20 text-orange-300 border border-orange-400 font-mono font-semibold hover:bg-orange-500/30 transition cursor-pointer">
-            🟠 DATAHOLICS BOOT
+        <div class="grid grid-cols-3 gap-1 text-xs mb-1">
+          <button id="btnFxBootA" class="px-1.5 py-1.5 rounded bg-orange-500/20 text-orange-300 border border-orange-400 font-mono font-semibold hover:bg-orange-500/30 transition cursor-pointer">
+            🔥 Boot A: Mecha
           </button>
-          <button id="btnFxHaro" class="px-2 py-1.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-400 font-mono font-semibold hover:bg-emerald-500/30 transition cursor-pointer">
+          <button id="btnFxBoot" class="px-1.5 py-1.5 rounded bg-amber-500/20 text-amber-200 border border-amber-400 font-mono font-semibold hover:bg-amber-500/30 transition cursor-pointer">
+            ⚡ Boot B: Editorial
+          </button>
+          <button id="btnFxBootC" class="px-1.5 py-1.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-400 font-mono font-semibold hover:bg-emerald-500/30 transition cursor-pointer">
+            🤖 Boot C: Haro
+          </button>
+        </div>
+        <div class="grid grid-cols-2 gap-1.5 text-xs">
+          <button id="btnFxHaro" class="px-2 py-1 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 font-mono font-semibold hover:bg-emerald-500/30 transition cursor-pointer">
             🟢 HARO TICKET IN!
           </button>
-          <button id="btnFxTransAm" class="px-2 py-1.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/50 font-mono font-semibold hover:bg-rose-500/30 transition cursor-pointer">
+          <button id="btnFxTransAm" class="px-2 py-1 rounded bg-rose-500/20 text-rose-300 border border-rose-500/50 font-mono font-semibold hover:bg-rose-500/30 transition cursor-pointer">
             ☄️ TRANS-AM Burst
           </button>
-          <button id="btnFxLaser" class="px-2 py-1.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/50 font-mono font-semibold hover:bg-amber-500/30 transition cursor-pointer">
+          <button id="btnFxLaser" class="px-2 py-1 rounded bg-amber-500/20 text-amber-300 border border-amber-500/50 font-mono font-semibold hover:bg-amber-500/30 transition cursor-pointer">
             ⚡ Buster Laser
           </button>
-          <button id="btnFxEvo" class="px-2 py-1.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 font-mono font-semibold hover:bg-cyan-500/30 transition cursor-pointer">
-            🧬 Armor Evolve
-          </button>
-          <button id="btnFxEmp" class="px-2 py-1.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/50 font-mono font-semibold hover:bg-purple-500/30 transition cursor-pointer">
+          <button id="btnFxEmp" class="px-2 py-1 rounded bg-purple-500/20 text-purple-300 border border-purple-500/50 font-mono font-semibold hover:bg-purple-500/30 transition cursor-pointer">
             🚨 Breaker Alert
           </button>
         </div>
@@ -518,6 +523,7 @@
       state.fxToStage = toS;
       document.getElementById('modeIndicator').textContent = `FX: ${type}`;
       document.getElementById('modeIndicator').className = 'text-rose-400 font-bold animate-pulse';
+      renderTftScreen();
     }
 
     function renderFullScreenCutscene() {
@@ -873,6 +879,183 @@
         const progW = Math.min(320, Math.round((t / 26) * 320));
         ctx.fillStyle = '#FF7300';
         ctx.fillRect(0, 237, progW, 3);
+
+      } else if (state.fxType === 'BOOTA') {
+        // =====================================================================
+        // OPTION A: THE SOVEREIGN MECHA OS BOOT (GUNDAM BIOS + EXECUTIVE HUD)
+        // =====================================================================
+        ctx.fillStyle = '#05070B';
+        ctx.fillRect(0, 0, 320, 240);
+
+        // Top & Bottom Orange/Black Hazard Tactical Bars
+        ctx.fillStyle = '#1C0D04';
+        ctx.fillRect(0, 0, 320, 22);
+        ctx.fillRect(0, 218, 320, 22);
+        ctx.fillStyle = '#FF7300';
+        ctx.fillRect(0, 21, 320, 2);
+        ctx.fillRect(0, 217, 320, 2);
+
+        ctx.font = 'bold 10px monospace';
+        ctx.fillStyle = '#FF7300';
+        ctx.fillText('/// G-FRAME BIOS v3.0 // SOVEREIGN IGNITION ///', 16, 15);
+        ctx.fillStyle = '#00FF88';
+        ctx.fillText('NODE: K-2SO [192.168.1.40] // ONLINE', 46, 233);
+
+        // Phase 1: Laser Convergence & Dataholics Emblem (Centered at 160, 66)
+        const cx = 160;
+        const cy = 64;
+        if (t < 5) {
+          ctx.strokeStyle = '#FF7300';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(160 - t * 28, 32, t * 56, 64);
+        }
+
+        // Corner Target Reticle Brackets around Logo
+        ctx.strokeStyle = '#00F0FF';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(98, 30, 124, 68);
+
+        // Dataholics Split-Wing Emblem
+        ctx.fillStyle = (t === 4 || t === 5) ? '#FFFFFF' : '#FF7300';
+        ctx.beginPath();
+        ctx.moveTo(cx - 44, cy - 21); ctx.lineTo(cx - 5, cy - 28);
+        ctx.lineTo(cx - 5, cy + 28);  ctx.lineTo(cx - 44, cy + 21);
+        ctx.closePath(); ctx.fill();
+
+        ctx.beginPath();
+        ctx.moveTo(cx + 5, cy - 28);  ctx.lineTo(cx + 44, cy - 21);
+        ctx.lineTo(cx + 44, cy + 21); ctx.lineTo(cx + 5, cy + 28);
+        ctx.closePath(); ctx.fill();
+
+        ctx.fillStyle = '#05070B';
+        ctx.beginPath();
+        ctx.arc(cx - 24, cy, 12, 0, Math.PI * 2);
+        ctx.arc(cx + 24, cy, 12, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillRect(cx - 24, cy - 5, 48, 10);
+
+        // Phase 2: DATAHOLICS & TiRA System Callout
+        ctx.font = 'bold 16px monospace';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText('D A T A H O L I C S', 68, 116);
+
+        ctx.font = 'bold 11px monospace';
+        ctx.fillStyle = '#00F0FF';
+        ctx.fillText('TiRA AUTONOMOUS SYSTEM // CORE', 58, 134);
+
+        // Phase 3: Executive Biometric Clearance Box + Segmented Boot Bar
+        ctx.fillStyle = '#140C08';
+        ctx.fillRect(18, 144, 284, 38);
+        ctx.strokeStyle = '#FFDD00';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(18.5, 144.5, 283, 37);
+
+        ctx.font = 'bold 12px monospace';
+        ctx.fillStyle = '#FFDD00';
+        ctx.fillText('★ LUIS MORALES DEVICE [MY CTO]', 44, 161);
+        ctx.font = '10px monospace';
+        ctx.fillStyle = '#66FFBB';
+        ctx.fillText('BIOMETRIC AUTH: VERIFIED // LEVEL 0', 48, 176);
+
+        // Segmented Mecha Boot Progress Bar
+        const pct = Math.min(100, Math.round((t / 25) * 100));
+        ctx.font = 'bold 10px monospace';
+        ctx.fillStyle = '#FF7300';
+        ctx.fillText(`BOOTING OS: ${pct}%`, 18, 204);
+        for (let s = 0; s < 14; s++) {
+          ctx.fillStyle = (s < Math.round((pct / 100) * 14)) ? '#FF7300' : '#1B2438';
+          ctx.fillRect(128 + s * 12, 194, 9, 11);
+        }
+
+      } else if (state.fxType === 'BOOTC') {
+        // =====================================================================
+        // OPTION C: THE HARO & GUNDAM HANGAR WAKE-UP (INTERACTIVE MECHA BOOT)
+        // =====================================================================
+        ctx.fillStyle = '#060A12';
+        ctx.fillRect(0, 0, 320, 240);
+
+        // Hangar Grid Background
+        ctx.strokeStyle = '#111C2D';
+        ctx.lineWidth = 1;
+        for (let gx = 0; gx < 320; gx += 20) {
+          ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, 240); ctx.stroke();
+        }
+        for (let gy = 0; gy < 240; gy += 20) {
+          ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(320, gy); ctx.stroke();
+        }
+
+        // Left Card: Dataholics Emblem + TiRA System + Luis Morales Badge
+        ctx.fillStyle = '#0C1322';
+        ctx.fillRect(10, 14, 176, 184);
+        ctx.strokeStyle = '#FF7300';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(10.5, 14.5, 175, 183);
+
+        // Dataholics Split-Wing Emblem inside Left Card (Centered at 98, 60)
+        const cx = 98;
+        const cy = 58;
+        ctx.fillStyle = '#FF7300';
+        ctx.beginPath();
+        ctx.moveTo(cx - 40, cy - 19); ctx.lineTo(cx - 5, cy - 25);
+        ctx.lineTo(cx - 5, cy + 25);  ctx.lineTo(cx - 40, cy + 19);
+        ctx.closePath(); ctx.fill();
+
+        ctx.beginPath();
+        ctx.moveTo(cx + 5, cy - 25);  ctx.lineTo(cx + 40, cy - 19);
+        ctx.lineTo(cx + 40, cy + 19); ctx.lineTo(cx + 5, cy + 25);
+        ctx.closePath(); ctx.fill();
+
+        ctx.fillStyle = '#0C1322';
+        ctx.beginPath();
+        ctx.arc(cx - 22, cy, 11, 0, Math.PI * 2);
+        ctx.arc(cx + 22, cy, 11, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillRect(cx - 22, cy - 4, 44, 8);
+
+        ctx.font = 'bold 14px sans-serif';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText('D A T A H O L I C S', 30, 108);
+
+        ctx.font = 'bold 11px monospace';
+        ctx.fillStyle = '#00F0FF';
+        ctx.fillText('TiRA SYSTEM v3.0', 44, 128);
+
+        ctx.fillStyle = '#1A120B';
+        ctx.fillRect(20, 142, 156, 44);
+        ctx.strokeStyle = '#FFDD00';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(20.5, 142.5, 155, 43);
+        ctx.font = 'bold 11px monospace';
+        ctx.fillStyle = '#FFDD00';
+        ctx.fillText('LUIS MORALES', 56, 160);
+        ctx.font = '10px monospace';
+        ctx.fillStyle = '#00FF88';
+        ctx.fillText('EXECUTIVE DEVICE [CTO]', 32, 177);
+
+        // Right Side: Bouncing HARO + Waking Gundam in Hangar!
+        const bounce = Math.round(Math.abs(Math.sin(t * 0.7)) * 12);
+        drawScaledSprite('HARO', (bounce > 6) ? 1 : 0, 212, 16 - bounce, 3);
+
+        // Haro Speech Bubble
+        ctx.fillStyle = '#06331A';
+        ctx.fillRect(194, 86, 116, 22);
+        ctx.strokeStyle = '#00FF88';
+        ctx.strokeRect(194.5, 86.5, 115, 21);
+        ctx.font = 'bold 9px monospace';
+        ctx.fillStyle = '#66FFBB';
+        ctx.fillText((t % 2 === 0) ? '"HELLO MY CTO!"' : '"TI-RA ONLINE!"', 204, 100);
+
+        // Gundam Waking Up below Haro
+        drawScaledSprite(1, t % 2, 214, 114, 3, (t < 8 && t % 2 === 0) ? '#00F0FF' : null);
+
+        // Bottom Full-Width Status Strip
+        ctx.fillStyle = '#131A29';
+        ctx.fillRect(10, 206, 300, 24);
+        ctx.strokeStyle = '#00F0FF';
+        ctx.strokeRect(10.5, 206.5, 299, 23);
+        ctx.font = 'bold 10px monospace';
+        ctx.fillStyle = '#FF7300';
+        ctx.fillText('>>> HANGAR READY // K-2SO TETHERED <<<', 38, 222);
 
       } else if (state.fxType === 'EMP') {
         const flash = (t % 2 === 0);
@@ -1404,8 +1587,14 @@
     }
 
     // FX Buttons
+    document.getElementById('btnFxBootA').onclick = () => {
+      triggerFullScreenFx('BOOTA', state.stage, state.stage);
+    };
     document.getElementById('btnFxBoot').onclick = () => {
       triggerFullScreenFx('BOOT', state.stage, state.stage);
+    };
+    document.getElementById('btnFxBootC').onclick = () => {
+      triggerFullScreenFx('BOOTC', state.stage, state.stage);
     };
     document.getElementById('btnFxHaro').onclick = () => {
       state.missionActive = true;
@@ -1419,11 +1608,6 @@
     document.getElementById('btnFxLaser').onclick = () => {
       setStage(1, false);
       triggerFullScreenFx('LASER', 0, 1);
-    };
-    document.getElementById('btnFxEvo').onclick = () => {
-      const nextS = (state.stage === 0) ? 1 : 2;
-      triggerFullScreenFx('EVO', state.stage, nextS);
-      setStage(nextS, false);
     };
     document.getElementById('btnFxEmp').onclick = () => {
       triggerFullScreenFx('EMP', state.stage, state.stage);
