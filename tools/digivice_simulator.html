@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+</head>
+<body class="bg-transparent text-[var(--foreground)] antialiased p-2">
+  <div class="bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] rounded-xl p-4 shadow-sm">
+    <!-- Top Header -->
+    <div class="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-[var(--border)]">
+      <div class="flex items-center gap-2">
+        <span class="inline-block w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
+        <h2 class="text-[var(--foreground)] font-semibold text-base">CYD ESP32-2432S028 Live Emulator &amp; 16-Color Sprite Studio</h2>
+      </div>
+      <div class="flex items-center gap-2 text-xs">
+        <span class="text-[var(--muted-foreground)]">Onboard RGB LED:</span>
+        <span id="rgbBadge" class="px-2 py-0.5 rounded font-mono font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">GREEN (IDLE)</span>
+        <button id="btnExportCpp" class="px-2.5 py-1 rounded bg-[var(--primary)] text-[var(--primary-foreground)] font-medium hover:opacity-90 transition cursor-pointer">
+          Copy C++ Sprite
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Side-by-Side Workspace -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+      
+      <!-- Left: Exact 320x240 CYD Hardware Screen (5 cols) -->
+      <div class="lg:col-span-5 flex flex-col items-center">
+        <div id="cydPcb" class="relative p-3 rounded-lg border-2 border-yellow-500/70 bg-neutral-950 shadow-lg" style="box-shadow: 0 0 24px rgba(0, 240, 255, 0.18);">
+          <div class="flex justify-between items-center mb-1 px-1 text-xs font-mono text-yellow-400/90">
+            <span>ESP32-2432S028</span>
+            <span>ST7789 320x240</span>
+          </div>
+          <!-- 320x240 Native Resolution Canvas -->
+          <canvas id="tftCanvas" width="320" height="240" class="rounded border border-cyan-500/40 cursor-pointer block" style="width: 320px; height: 240px; image-rendering: pixelated;"></canvas>
+          <div class="flex justify-between items-center mt-1.5 px-1 text-xs text-[var(--muted-foreground)]">
+            <span>Click tabs or pet directly on screen</span>
+            <span id="fpsLabel" class="font-mono">350ms Tick</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Center: Telemetry & Evolution Controls (3 cols) -->
+      <div class="lg:col-span-3 flex flex-col gap-2.5 bg-[var(--background)] p-3 rounded-lg border border-[var(--border)]">
+        <div class="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">Evolution Stage</div>
+        <div class="grid grid-cols-2 gap-1.5 text-xs">
+          <button data-stage="0" class="stage-btn px-2 py-1.5 rounded border border-[var(--border)] font-mono text-left hover:border-emerald-400 transition cursor-pointer">0: Bit-Slime</button>
+          <button data-stage="1" class="stage-btn px-2 py-1.5 rounded border border-[var(--border)] font-mono text-left hover:border-cyan-400 transition cursor-pointer">1: Phantom</button>
+          <button data-stage="2" class="stage-btn px-2 py-1.5 rounded border border-[var(--border)] font-mono text-left hover:border-amber-400 transition cursor-pointer">2: Daemon</button>
+          <button data-stage="3" class="stage-btn px-2 py-1.5 rounded border border-[var(--border)] font-mono text-left hover:border-rose-500 transition cursor-pointer">404: Tomb</button>
+        </div>
+
+        <div class="pt-1 border-t border-[var(--border)]">
+          <div class="flex justify-between text-xs mb-1">
+            <span class="text-[var(--muted-foreground)]">K-2SO CPU Load</span>
+            <span id="cpuReadout" class="font-mono font-semibold">18.5%</span>
+          </div>
+          <input id="cpuSlider" type="range" min="0" max="100" value="18" class="w-full accent-cyan-400 cursor-pointer">
+        </div>
+
+        <div>
+          <div class="flex justify-between text-xs mb-1">
+            <span class="text-[var(--muted-foreground)]">RAM Usage</span>
+            <span id="ramReadout" class="font-mono font-semibold">42.0%</span>
+          </div>
+          <input id="ramSlider" type="range" min="0" max="100" value="42" class="w-full accent-amber-400 cursor-pointer">
+        </div>
+
+        <div class="flex flex-col gap-1.5 pt-1 border-t border-[var(--border)] text-xs">
+          <label class="flex items-center justify-between cursor-pointer">
+            <span>Host Online (`192.168.1.40`)</span>
+            <input id="chkOnline" type="checkbox" checked class="accent-emerald-400 cursor-pointer">
+          </label>
+          <label class="flex items-center justify-between cursor-pointer">
+            <span>Andor Mission Active</span>
+            <input id="chkMission" type="checkbox" class="accent-cyan-400 cursor-pointer">
+          </label>
+          <label class="flex items-center justify-between cursor-pointer">
+            <span class="text-rose-400 font-medium">Trip Circuit Breaker</span>
+            <input id="chkBreaker" type="checkbox" class="accent-rose-500 cursor-pointer">
+          </label>
+        </div>
+      </div>
+
+      <!-- Right: Interactive 24x24 Pixel Art Editor & 16-Color Palette (4 cols) -->
+      <div class="lg:col-span-4 flex flex-col gap-2 bg-[var(--background)] p-3 rounded-lg border border-[var(--border)]">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">24x24 Pixel Art Studio</span>
+          <div class="flex gap-1 text-xs">
+            <button id="btnFrame0" class="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-mono cursor-pointer">Frame 0</button>
+            <button id="btnFrame1" class="px-2 py-0.5 rounded border border-[var(--border)] font-mono cursor-pointer">Frame 1</button>
+          </div>
+        </div>
+
+        <div class="flex gap-3 items-center justify-center">
+          <!-- 24x24 Interactive Pixel Grid (168x168 px) -->
+          <canvas id="editorCanvas" width="168" height="168" class="border border-[var(--border)] rounded cursor-crosshair bg-neutral-950" style="width: 168px; height: 168px; image-rendering: pixelated;"></canvas>
+          
+          <!-- 16-Color Swatch Picker -->
+          <div id="paletteGrid" class="grid grid-cols-2 gap-1"></div>
+        </div>
+        <div id="exportStatus" class="text-xs text-[var(--muted-foreground)] text-center font-mono truncate">
+          Paint pixels above to live-preview on TFT
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // 1. Exact 16-Color Palette from sprites.h
+    // =========================================================================
+    const PALETTE = {
+      '.': { hex: '#090E1A', name: 'Transparent' },
+      '1': { hex: '#05070B', name: 'Obsidian Outline' },
+      '2': { hex: '#005533', name: 'Deep Emerald' },
+      '3': { hex: '#00CC66', name: 'Matrix Green' },
+      '4': { hex: '#66FFBB', name: 'Neon Mint' },
+      '5': { hex: '#FFFFFF', name: 'Specular White' },
+      '6': { hex: '#003888', name: 'Deep Cobalt' },
+      '7': { hex: '#00BBFF', name: 'Electric Cyan' },
+      '8': { hex: '#88FFFF', name: 'Laser Ice Cyan' },
+      '9': { hex: '#CC22FF', name: 'Neon Violet' },
+      'A': { hex: '#4A1208', name: 'Dark Magma' },
+      'B': { hex: '#EE1144', name: 'Molten Crimson' },
+      'C': { hex: '#FF6600', name: 'Blazing Orange' },
+      'D': { hex: '#FFDD00', name: 'Solar Gold' },
+      'E': { hex: '#3A4659', name: 'Gunmetal Stone' },
+      'F': { hex: '#8FA3B8', name: 'Light Bone' }
+    };
+
+    // =========================================================================
+    // 2. Exact 24x24 Multi-Color Sprite Matrices from sprites.h
+    // =========================================================================
+    const SPRITES = {
+      0: [
+        [
+          "...........85...........",
+          "..........858...........",
+          "...........11...........",
+          "....4....114411.........",
+          "........14444441........",
+          "......114455443311......",
+          ".....14455544333331.....",
+          "....1445544333333221....",
+          "...144444333333333221...",
+          "...143311533331153221...",
+          "..14333115333311533221..",
+          "..14333111333311133221..",
+          "..133D333338833333D221..",
+          "..13333333855833333221..",
+          "..13333333855833333221..",
+          "...123333338833333221...",
+          "...122333333333332221...",
+          "....1222333333332221....",
+          ".....11222222222211.....",
+          ".......1111111111.......",
+          "........................",
+          "........................",
+          "........................",
+          "........................"
+        ],
+        [
+          "........................",
+          "...........58...........",
+          "..........585...........",
+          "...........11.....4.....",
+          ".........114411.........",
+          ".......1144444411.......",
+          ".....11445544333311.....",
+          "....1445554433333321....",
+          "...144554433333333221...",
+          "..14444433333333332221..",
+          "..14331113333311133221..",
+          "..14331513333315133221..",
+          ".143D33333855833333D221.",
+          ".1333333385555833333221.",
+          ".1333333338558333333221.",
+          "..12333333388333333221..",
+          "..12223333333333322221..",
+          "...112223333333222211...",
+          ".....11122222222111.....",
+          "........11111111........",
+          "........................",
+          "........................",
+          "........................",
+          "........................"
+        ]
+      ],
+      1: [
+        [
+          ".........9....9.........",
+          ".......1188888811.......",
+          ".....11888777788811.....",
+          "....1887777777777881....",
+          "...187711111111117781...",
+          "..91871111111111117819..",
+          "..187111DD511DD5111781..",
+          "..17711DDDD11DDDD11771..",
+          "..17711111111111111771..",
+          "...176111198891111671...",
+          "...176677985589776671...",
+          "..91766798555589766719..",
+          "..17766779855897766771..",
+          "..17666777988977766671..",
+          "...166667777777766661...",
+          "...166666777777666661...",
+          "....1661667777661661....",
+          "....161.16677661.161....",
+          "....11...161161...11....",
+          "...9.....11..11.....9...",
+          "........................",
+          "........................",
+          "........................",
+          "........................"
+        ],
+        [
+          "........................",
+          "....9..............9....",
+          ".......1188888811.......",
+          ".....11888777788811.....",
+          "....1887777777777881....",
+          "...187711111111117781...",
+          "..1871111111111111781...",
+          "..1871115DD115DD111781..",
+          "..17711DDDD11DDDD11771..",
+          "..17711111111111111771..",
+          "...176111985589111671...",
+          "..91766798555589766719..",
+          "..17766779855897766771..",
+          "..17666777988977766671..",
+          "...166667777777766661...",
+          "...166666777777666661...",
+          "....1666166776616661....",
+          ".....161.166661.161.....",
+          ".....11...1661...11.....",
+          "..........1111..........",
+          "........................",
+          "........................",
+          "........................",
+          "........................"
+        ]
+      ],
+      2: [
+        [
+          "..D..................D..",
+          ".DC1......D..D......1CD.",
+          ".1CC1....1C11C1....1CC1.",
+          "..1CB1..1CCBBCC1..1BC1..",
+          "..1CCB11CBBBBBBC11BCC1..",
+          "...1BBBBEEEEEEEEBBBB1...",
+          "...1BBEE11111111EEBB1...",
+          "..1EE11185511558111EE1..",
+          "..1E1118855115588111E1..",
+          "..1E1111111CC1111111E1..",
+          ".C1EE11BBCCDDCCBB11EE1C.",
+          "D1EEEBBBBCD55DCBBBBEEE1D",
+          ".1EAABBBCD5555DCBBBAAE1.",
+          "..1AABBBCD5555DCBBBAA1..",
+          "..1AAABBBCCDDCCBBBAAA1..",
+          "...1AAABBBBBBBBBBAAA1...",
+          "....1AA11BBBBBB11AA1....",
+          "....1A1..1B11B1..1A1....",
+          "....11...11..11...11....",
+          "........................",
+          "........................",
+          "........................",
+          "........................",
+          "........................"
+        ],
+        [
+          ".5....................5.",
+          ".DC1.....D....D.....1CD.",
+          ".1CC1...1C1..1C1...1CC1.",
+          "..1CB1.1CCBBBBCC1.1BC1..",
+          "..1CCB1CBBBBBBBBC1BCC1..",
+          "...1BBBBEEEEEEEEBBBB1...",
+          "..C1BBEE11111111EEBB1C..",
+          ".D1EE11155811855111EE1D.",
+          "..1E1118558118558111E1..",
+          "..1E111111CDDC111111E1..",
+          "..1EE11BBCD55DCBB11EE1..",
+          ".C1EEEBBCD5555DCBBEEE1C.",
+          "D1EAABBBCD5555DCBBBAAE1D",
+          "..1AABBBCCDDDDCCBBBAA1..",
+          "..1AAABBBCCCCCCBBBAAA1..",
+          "...1AAABBBBBBBBBBAAA1...",
+          "....1AA11BBBBBB11AA1....",
+          ".....1A1.1B11B1.1A1.....",
+          ".....11..11..11..11.....",
+          "........................",
+          "........................",
+          "........................",
+          "........................",
+          "........................"
+        ]
+      ],
+      3: [
+        [
+          ".......1111111111.......",
+          ".....11FFFFFFFFFF11.....",
+          "....1FFEEEEEEEEEEFF1....",
+          "...1FEEEEEBBBBEEEEEF1...",
+          "..1FEEEEEEEBBEEEEEEEF1..",
+          "..1FEEEEEBBBBBBEEEEEF1..",
+          "..1FEEEEEBBBBBBEEEEEF1..",
+          "..1FEEEEEEEBBEEEEEEEF1..",
+          "..1FEEEEEEEBBEEEEEEEF1..",
+          "..1FEEEEEEEEEEEEEEEEF1..",
+          "..1FEE1111EEEE1111EEF1..",
+          "..1FE11B511EE11B511EF1..",
+          "..1FE11BB11EE11BB11EF1..",
+          "..1FEE1111EEEE1111EEF1..",
+          "..1FEEEEEE1111EEEEEEF1..",
+          "..1FEEEE11EEEE11EEEEF1..",
+          "..1EEEE11EEEEEE11EEEE1..",
+          "..1EEEEEEEEEEEEEEEEEE1..",
+          ".1166666666666666666611.",
+          "1BB666666666666666666BB1",
+          "111111111111111111111111",
+          "........................",
+          "........................",
+          "........................"
+        ],
+        [
+          ".......1111111111.......",
+          ".....11FFFFFFFFFF11.....",
+          "....1FFEEEEEEEEEEFF1....",
+          "...1FEEEEEBCCBEEEEEF1...",
+          "..1FEEEEEEB55BEEEEEEF1..",
+          "..1FEEEEEBC55CBEEEEEF1..",
+          "..1FEEEEEBC55CBEEEEEF1..",
+          "..1FEEEEEEB55BEEEEEEF1..",
+          "..1FEEEEEEBCCBEEEEEEF1..",
+          "..1FEEEEEEEEEEEEEEEEF1..",
+          "..1FEE1111EEEE1111EEF1..",
+          "..1FE115B11EE115B11EF1..",
+          "..1FE11BB11EE11BB11EF1..",
+          "..1FEE1111EEEE1111EEF1..",
+          "..1FEEEEEE1111EEEEEEF1..",
+          "..1FEEEE11EEEE11EEEEF1..",
+          "..1EEEE11EEEEEE11EEEE1..",
+          "..1EEEEEEEEEEEEEEEEEE1..",
+          ".1166666666666666666611.",
+          "1CC666666666666666666CC1",
+          "111111111111111111111111",
+          "........................",
+          "........................",
+          "........................"
+        ]
+      ]
+    };
+
+    // =========================================================================
+    // 3. Emulator State
+    // =========================================================================
+    const state = {
+      activeTab: 0, // 0: AI-PET, 1: GATES, 2: NODE, 3: DECK
+      stage: 0,
+      animOffset: 0,
+      editFrame: 0,
+      selectedBrush: '4',
+      serverOnline: true,
+      cpu: 18.5,
+      ram: 42.0,
+      disk: 34.0,
+      missionActive: false,
+      circuitBreaker: false,
+      backlight: 85,
+      audioEnabled: true,
+      isPainting: false
+    };
+
+    const tft = document.getElementById('tftCanvas');
+    const ctx = tft.getContext('2d');
+    const edCanvas = document.getElementById('editorCanvas');
+    const edCtx = edCanvas.getContext('2d');
+
+    // Build 16-Color Palette Picker UI
+    const paletteGrid = document.getElementById('paletteGrid');
+    Object.keys(PALETTE).forEach(code => {
+      const btn = document.createElement('button');
+      btn.className = 'w-6 h-5 rounded border border-white/20 flex items-center justify-center text-xs font-mono cursor-pointer transition';
+      btn.style.backgroundColor = PALETTE[code].hex;
+      btn.style.color = (code === '5' || code === '4' || code === '8' || code === 'D' || code === 'F') ? '#000' : '#fff';
+      btn.textContent = code;
+      btn.title = `${code}: ${PALETTE[code].name} (${PALETTE[code].hex})`;
+      btn.onclick = () => {
+        state.selectedBrush = code;
+        highlightBrush();
+      };
+      btn.dataset.code = code;
+      paletteGrid.appendChild(btn);
+    });
+
+    function highlightBrush() {
+      Array.from(paletteGrid.children).forEach(b => {
+        if (b.dataset.code === state.selectedBrush) {
+          b.style.outline = '2px solid #00F0FF';
+          b.style.transform = 'scale(1.1)';
+        } else {
+          b.style.outline = 'none';
+          b.style.transform = 'scale(1.0)';
+        }
+      });
+    }
+    highlightBrush();
+
+    // =========================================================================
+    // 4. Render 72x72 Pet Sanctuary onto TFT (x=15, y=41)
+    // =========================================================================
+    function drawPetSanctuary(ox, oy) {
+      const pedColors = ['#00FF88', '#00F0FF', '#FFB800', '#FF2A55'];
+      const pedColor = pedColors[state.stage] || '#FF2A55';
+
+      // 1. Cyber Grid 72x72
+      for (let y = 0; y < 72; y++) {
+        for (let x = 0; x < 72; x++) {
+          const isGrid = (x % 12 === 0) || (y % 12 === 0);
+          ctx.fillStyle = isGrid ? '#131D33' : '#090E1A';
+          ctx.fillRect(ox + x, oy + y, 1, 1);
+        }
+      }
+
+      // 2. Holographic Projection Pedestal Ring
+      const ringW = (state.animOffset % 2 === 0) ? 24 : 21;
+      ctx.fillStyle = pedColor;
+      for (let dx = -ringW; dx <= ringW; dx++) {
+        const px = 36 + dx;
+        if (px >= 2 && px < 70) {
+          ctx.fillRect(ox + px, oy + 64, 1, 1);
+          if (Math.abs(dx) < ringW - 5) {
+            ctx.fillRect(ox + px, oy + 65, 1, 1);
+          }
+        }
+      }
+
+      // 3. Draw 24x24 Shaded Sprite at 3x Scale
+      const frameIdx = state.animOffset % 2;
+      const matrix = SPRITES[state.stage][frameIdx];
+      for (let r = 0; r < 24; r++) {
+        const row = matrix[r];
+        for (let c = 0; c < 24; c++) {
+          const ch = row[c];
+          if (ch && ch !== '.') {
+            ctx.fillStyle = PALETTE[ch] ? PALETTE[ch].hex : '#00FF88';
+            ctx.fillRect(ox + c * 3, oy + r * 3, 3, 3);
+          }
+        }
+      }
+
+      // 4. Rising Cyber-Particles
+      const pCols = [10, 58, 16, 62];
+      ctx.fillStyle = pedColor;
+      for (let i = 0; i < 4; i++) {
+        const py = 60 - ((state.animOffset * 5 + i * 15) % 54);
+        const px = pCols[i] + ((state.animOffset + i) % 3) - 1;
+        if (px >= 2 && px < 70 && py >= 2 && py < 68) {
+          ctx.fillRect(ox + px, oy + py, 2, 1);
+        }
+      }
+    }
+
+    // =========================================================================
+    // 5. Render Full 320x240 LVGL 9 Cyberpunk Screen
+    // =========================================================================
+    function renderTftScreen() {
+      // Clear background (#070A10)
+      ctx.fillStyle = '#070A10';
+      ctx.fillRect(0, 0, 320, 240);
+
+      // Top Header Bar (320x24)
+      ctx.fillStyle = '#131A29';
+      ctx.fillRect(0, 0, 320, 24);
+      ctx.fillStyle = '#00F0FF';
+      ctx.fillRect(0, 23, 320, 1);
+
+      ctx.font = 'bold 11px monospace';
+      ctx.fillStyle = state.serverOnline ? '#00FF88' : '#FF2A55';
+      ctx.fillText(state.serverOnline ? '[*] K-2SO: ONLINE' : '[!] K-2SO: 404 OFFLINE', 8, 15);
+
+      ctx.fillStyle = '#738A9C';
+      ctx.fillText(state.serverOnline ? 'WIFI: -52dBm' : 'WIFI: --', 232, 15);
+
+      // Active Tab Content Area (y = 25..207)
+      if (state.activeTab === 0) {
+        // --- TAB 0: [AI-PET] ---
+        // Pet Sanctuary Card (x=6, y=32, w=90, h=94)
+        ctx.fillStyle = '#131A29';
+        ctx.fillRect(6, 32, 90, 94);
+        ctx.strokeStyle = '#00F0FF';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(6.5, 32.5, 89, 93);
+
+        drawPetSanctuary(15, 41);
+
+        // Right Info Labels
+        const stageNames = ['AI: BIT-SLIME (IDLE)', 'AI: PHANTOM-NODE', 'AI: DAEMON-CORE (HOT)', 'AI: 404 TOMBSTONE'];
+        const stageCols  = ['#00FF88', '#00F0FF', '#FFB800', '#FF2A55'];
+        ctx.font = 'bold 12px monospace';
+        ctx.fillStyle = stageCols[state.stage];
+        ctx.fillText(stageNames[state.stage], 108, 46);
+
+        ctx.font = '11px monospace';
+        if (state.circuitBreaker) {
+          ctx.fillStyle = '#FF2A55';
+          ctx.fillText('STATUS: CIRCUIT BREAKER!', 108, 64);
+        } else if (state.missionActive) {
+          ctx.fillStyle = '#00F0FF';
+          ctx.fillText('STATUS: MISSION ACTIVE', 108, 64);
+        } else {
+          ctx.fillStyle = '#738A9C';
+          ctx.fillText(state.serverOnline ? 'STATUS: COGNITIVE IDLE' : 'STATUS: UNREACHABLE', 108, 64);
+        }
+
+        ctx.fillStyle = '#FFB800';
+        ctx.fillText('AI COGNITIVE LOAD:', 108, 86);
+
+        // Energy Bar
+        ctx.fillStyle = '#1B2438';
+        ctx.fillRect(108, 94, 145, 10);
+        ctx.fillStyle = '#00F0FF';
+        ctx.fillRect(108, 94, Math.round(1.45 * state.cpu), 10);
+
+        ctx.fillStyle = '#F0F6FC';
+        ctx.fillText(state.cpu.toFixed(1) + '%', 260, 103);
+
+        // Bottom Telemetry Summary Card
+        ctx.fillStyle = '#131A29';
+        ctx.fillRect(6, 134, 308, 64);
+        ctx.strokeStyle = '#1B2438';
+        ctx.strokeRect(6.5, 134.5, 307, 63);
+
+        ctx.fillStyle = '#00F0FF';
+        ctx.fillText('SANCTUARY TELEMETRY // 16-COLOR SHADED ENGINE', 14, 150);
+        ctx.fillStyle = '#738A9C';
+        ctx.fillText(`POLLER: ${state.serverOnline ? 'active' : 'offline'}   |   OLLAMA: ${state.serverOnline ? 'active' : 'offline'}`, 14, 168);
+        ctx.fillStyle = '#00FF88';
+        ctx.fillText('[ TAP PET CARD TO CYCLE EVOLUTION SHOWCASE ]', 14, 186);
+
+      } else if (state.activeTab === 1) {
+        // --- TAB 1: [GATES] ---
+        ctx.font = 'bold 12px monospace';
+        ctx.fillStyle = state.missionActive ? '#00FF88' : '#00F0FF';
+        ctx.fillText(state.missionActive ? '[ MISSION: #308 (ANDOR_INVERTED) ]' : '[ MISSION: STANDBY ]', 10, 44);
+
+        ctx.font = '11px monospace';
+        ctx.fillStyle = '#738A9C';
+        ctx.fillText(state.missionActive ? 'STAGE: GATE_2_ASSERTIONS | ATTEMPT: 1' : 'STAGE: IDLE | ATTEMPT: 0', 10, 62);
+        ctx.fillStyle = '#FFB800';
+        ctx.fillText(state.missionActive ? 'TIME: 00:48' : 'TIME: 00:00', 238, 62);
+
+        const gates = [
+          { x: 8,   y: 72, label: 'G0 INTEGRITY: [PASS]', pass: !state.circuitBreaker },
+          { x: 162, y: 72, label: 'G1 LINTERS:   [PASS]', pass: !state.circuitBreaker },
+          { x: 8,   y: 112, label: state.missionActive ? 'G2 ASSERTION: [RUN]' : 'G2 ASSERTION: [PASS]', pass: !state.circuitBreaker },
+          { x: 162, y: 112, label: state.circuitBreaker ? 'G3 CIRCUIT: [TRIPPED]' : 'G3 CIRCUIT:   [CLEAR]', pass: !state.circuitBreaker }
+        ];
+        gates.forEach(g => {
+          ctx.fillStyle = g.pass ? '#06331A' : '#3B0715';
+          ctx.fillRect(g.x, g.y, 148, 32);
+          ctx.strokeStyle = g.pass ? '#00FF88' : '#FF2A55';
+          ctx.strokeRect(g.x + 0.5, g.y + 0.5, 147, 31);
+          ctx.fillStyle = '#F0F6FC';
+          ctx.fillText(g.label, g.x + 8, g.y + 20);
+        });
+
+        // Reset Button
+        ctx.fillStyle = '#0D2A3A';
+        ctx.fillRect(8, 156, 302, 34);
+        ctx.strokeStyle = '#00F0FF';
+        ctx.strokeRect(8.5, 156.5, 301, 33);
+        ctx.fillStyle = '#00F0FF';
+        ctx.fillText('[ ACK / RESET CIRCUIT BREAKER ]', 58, 177);
+
+      } else if (state.activeTab === 2) {
+        // --- TAB 2: [NODE] ---
+        const bars = [
+          { label: 'CPU',  val: state.cpu,  col: '#00F0FF', y: 42 },
+          { label: 'RAM',  val: state.ram,  col: '#FFB800', y: 72 },
+          { label: 'DISK', val: state.disk, col: '#00FF88', y: 102 }
+        ];
+        ctx.font = 'bold 11px monospace';
+        bars.forEach(b => {
+          ctx.fillStyle = '#00F0FF';
+          ctx.fillText(b.label, 12, b.y + 10);
+          ctx.fillStyle = '#1B2438';
+          ctx.fillRect(58, b.y, 195, 12);
+          ctx.fillStyle = b.col;
+          ctx.fillRect(58, b.y, Math.round(1.95 * b.val), 12);
+          ctx.fillStyle = '#F0F6FC';
+          ctx.fillText(b.val.toFixed(1) + '%', 262, b.y + 10);
+        });
+
+        ctx.fillStyle = '#131A29';
+        ctx.fillRect(10, 132, 300, 62);
+        ctx.strokeStyle = '#1B2438';
+        ctx.strokeRect(10.5, 132.5, 299, 61);
+        ctx.fillStyle = '#00FF88';
+        ctx.fillText('POLLER: active', 20, 152);
+        ctx.fillStyle = '#00F0FF';
+        ctx.fillText('OLLAMA: active', 175, 152);
+        ctx.fillStyle = '#FFB800';
+        ctx.fillText('LOAD 1M: 1.42', 20, 178);
+        ctx.fillStyle = '#00F0FF';
+        ctx.fillText('UP: 14h 22m', 175, 178);
+
+      } else if (state.activeTab === 3) {
+        // --- TAB 3: [DECK] ---
+        ctx.font = 'bold 11px monospace';
+        ctx.fillStyle = '#00F0FF';
+        ctx.fillText('TFT BACKLIGHT PWM:', 14, 48);
+        ctx.fillStyle = '#1B2438';
+        ctx.fillRect(14, 58, 230, 10);
+        ctx.fillStyle = '#00F0FF';
+        ctx.fillRect(14, 58, Math.round(2.3 * state.backlight), 10);
+        ctx.fillStyle = '#F0F6FC';
+        ctx.fillText(state.backlight + '%', 258, 67);
+
+        ctx.fillStyle = '#00F0FF';
+        ctx.fillText('CYBERSYNTH AUDIO (GPIO 26): [ENABLED]', 14, 102);
+        ctx.fillStyle = '#738A9C';
+        ctx.fillText('AMBIENT LDR SENSOR (GPIO 34): 342', 14, 128);
+
+        ctx.fillStyle = '#0D2A3A';
+        ctx.fillRect(14, 148, 292, 38);
+        ctx.strokeStyle = '#00F0FF';
+        ctx.strokeRect(14.5, 148.5, 291, 37);
+        ctx.fillStyle = '#00F0FF';
+        ctx.fillText('[ RE-POLL K-2SO TELEMETRY NOW ]', 54, 171);
+      }
+
+      // Bottom Navigation Tab Bar (y = 208..240)
+      const tabs = ['[AI-PET]', '[GATES]', '[NODE]', '[DECK]'];
+      for (let i = 0; i < 4; i++) {
+        const tx = i * 80;
+        ctx.fillStyle = (state.activeTab === i) ? '#131A29' : '#0C101A';
+        ctx.fillRect(tx, 208, 80, 32);
+        ctx.strokeStyle = '#1B2438';
+        ctx.strokeRect(tx + 0.5, 208.5, 79, 31);
+        if (state.activeTab === i) {
+          ctx.fillStyle = '#00F0FF';
+          ctx.fillRect(tx, 208, 80, 2);
+        }
+        ctx.font = 'bold 11px monospace';
+        ctx.fillStyle = (state.activeTab === i) ? '#00F0FF' : '#738A9C';
+        ctx.fillText(tabs[i], tx + 14, 228);
+      }
+    }
+
+    // =========================================================================
+    // 6. Render 24x24 Pixel Art Studio Grid
+    // =========================================================================
+    function renderEditor() {
+      const matrix = SPRITES[state.stage][state.editFrame];
+      for (let r = 0; r < 24; r++) {
+        const row = matrix[r];
+        for (let c = 0; c < 24; c++) {
+          const ch = row[c] || '.';
+          edCtx.fillStyle = PALETTE[ch] ? PALETTE[ch].hex : '#090E1A';
+          edCtx.fillRect(c * 7, r * 7, 7, 7);
+          edCtx.strokeStyle = 'rgba(255,255,255,0.06)';
+          edCtx.strokeRect(c * 7, r * 7, 7, 7);
+        }
+      }
+    }
+
+    function paintEditorPixel(e) {
+      const rect = edCanvas.getBoundingClientRect();
+      const x = Math.floor((e.clientX - rect.left) / (rect.width / 24));
+      const y = Math.floor((e.clientY - rect.top) / (rect.height / 24));
+      if (x >= 0 && x < 24 && y >= 0 && y < 24) {
+        const row = SPRITES[state.stage][state.editFrame][y];
+        SPRITES[state.stage][state.editFrame][y] = row.substring(0, x) + state.selectedBrush + row.substring(x + 1);
+        renderEditor();
+        renderTftScreen();
+      }
+    }
+
+    edCanvas.addEventListener('mousedown', e => { state.isPainting = true; paintEditorPixel(e); });
+    window.addEventListener('mouseup', () => { state.isPainting = false; });
+    edCanvas.addEventListener('mousemove', e => { if (state.isPainting) paintEditorPixel(e); });
+
+    // =========================================================================
+    // 7. Interactive Touchscreen Click Handling on 320x240 TFT
+    // =========================================================================
+    tft.addEventListener('click', e => {
+      const rect = tft.getBoundingClientRect();
+      const x = (e.clientX - rect.left) * (320 / rect.width);
+      const y = (e.clientY - rect.top) * (240 / rect.height);
+
+      // Bottom Nav Bar (y >= 208)
+      if (y >= 208) {
+        state.activeTab = Math.min(3, Math.floor(x / 80));
+        renderTftScreen();
+        return;
+      }
+
+      // Inside [AI-PET] tab: clicking Pet Card (x: 6..96, y: 32..126) cycles stage
+      if (state.activeTab === 0 && x >= 6 && x <= 96 && y >= 32 && y <= 126) {
+        setStage((state.stage + 1) % 4);
+      }
+
+      // Inside [GATES] tab: clicking ACK button resets circuit breaker
+      if (state.activeTab === 1 && y >= 156 && y <= 190) {
+        state.circuitBreaker = false;
+        document.getElementById('chkBreaker').checked = false;
+        syncStageFromTelemetry();
+      }
+    });
+
+    // =========================================================================
+    // 8. Controls & Underglow Sync
+    // =========================================================================
+    function updateUnderglowBadge() {
+      const badge = document.getElementById('rgbBadge');
+      const pcb = document.getElementById('cydPcb');
+      if (!state.serverOnline) {
+        badge.textContent = 'RED PULSE (404)';
+        badge.className = 'px-2 py-0.5 rounded font-mono font-semibold bg-rose-500/20 text-rose-400 border border-rose-500/40';
+        pcb.style.boxShadow = '0 0 28px rgba(255, 42, 85, 0.35)';
+      } else if (state.circuitBreaker) {
+        badge.textContent = 'CRIMSON STROBE';
+        badge.className = 'px-2 py-0.5 rounded font-mono font-semibold bg-rose-600/30 text-amber-300 border border-rose-500';
+        pcb.style.boxShadow = '0 0 30px rgba(255, 42, 85, 0.5)';
+      } else if (state.stage === 0) {
+        badge.textContent = 'GREEN (BIT-SLIME)';
+        badge.className = 'px-2 py-0.5 rounded font-mono font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40';
+        pcb.style.boxShadow = '0 0 24px rgba(0, 255, 136, 0.22)';
+      } else if (state.stage === 1) {
+        badge.textContent = 'CYAN (PHANTOM)';
+        badge.className = 'px-2 py-0.5 rounded font-mono font-semibold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40';
+        pcb.style.boxShadow = '0 0 24px rgba(0, 240, 255, 0.25)';
+      } else {
+        badge.textContent = 'AMBER (DAEMON)';
+        badge.className = 'px-2 py-0.5 rounded font-mono font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40';
+        pcb.style.boxShadow = '0 0 24px rgba(255, 184, 0, 0.28)';
+      }
+    }
+
+    function setStage(s) {
+      state.stage = s;
+      document.querySelectorAll('.stage-btn').forEach(b => {
+        if (Number(b.dataset.stage) === s) {
+          b.classList.add('border-cyan-400', 'bg-cyan-500/10');
+        } else {
+          b.classList.remove('border-cyan-400', 'bg-cyan-500/10');
+        }
+      });
+      updateUnderglowBadge();
+      renderEditor();
+      renderTftScreen();
+    }
+
+    function syncStageFromTelemetry() {
+      if (!state.serverOnline) {
+        setStage(3);
+      } else if (state.cpu < 30) {
+        setStage(0);
+      } else if (state.cpu < 70) {
+        setStage(1);
+      } else {
+        setStage(2);
+      }
+    }
+
+    document.querySelectorAll('.stage-btn').forEach(btn => {
+      btn.onclick = () => setStage(Number(btn.dataset.stage));
+    });
+
+    document.getElementById('cpuSlider').oninput = e => {
+      state.cpu = Number(e.target.value);
+      document.getElementById('cpuReadout').textContent = state.cpu.toFixed(1) + '%';
+      syncStageFromTelemetry();
+    };
+
+    document.getElementById('ramSlider').oninput = e => {
+      state.ram = Number(e.target.value);
+      document.getElementById('ramReadout').textContent = state.ram.toFixed(1) + '%';
+      renderTftScreen();
+    };
+
+    document.getElementById('chkOnline').onchange = e => {
+      state.serverOnline = e.target.checked;
+      syncStageFromTelemetry();
+    };
+
+    document.getElementById('chkMission').onchange = e => {
+      state.missionActive = e.target.checked;
+      renderTftScreen();
+    };
+
+    document.getElementById('chkBreaker').onchange = e => {
+      state.circuitBreaker = e.target.checked;
+      updateUnderglowBadge();
+      renderTftScreen();
+    };
+
+    document.getElementById('btnFrame0').onclick = () => {
+      state.editFrame = 0;
+      document.getElementById('btnFrame0').className = 'px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-mono cursor-pointer';
+      document.getElementById('btnFrame1').className = 'px-2 py-0.5 rounded border border-[var(--border)] font-mono cursor-pointer';
+      renderEditor();
+    };
+
+    document.getElementById('btnFrame1').onclick = () => {
+      state.editFrame = 1;
+      document.getElementById('btnFrame1').className = 'px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-mono cursor-pointer';
+      document.getElementById('btnFrame0').className = 'px-2 py-0.5 rounded border border-[var(--border)] font-mono cursor-pointer';
+      renderEditor();
+    };
+
+    // Export current sprite frame to C++ array for sprites.h
+    document.getElementById('btnExportCpp').onclick = () => {
+      const names = ['slime', 'phantom', 'daemon', 'tomb'];
+      const arrName = `sprite_${names[state.stage]}_f${state.editFrame}`;
+      const rows = SPRITES[state.stage][state.editFrame].map(r => `  "${r}"`).join(',\n');
+      const cpp = `const char* const ${arrName}[24] = {\n${rows}\n};`;
+      navigator.clipboard.writeText(cpp);
+      const status = document.getElementById('exportStatus');
+      status.textContent = `Copied ${arrName}[24] to clipboard!`;
+      status.classList.add('text-emerald-400');
+      setTimeout(() => {
+        status.textContent = 'Paint pixels above to live-preview on TFT';
+        status.classList.remove('text-emerald-400');
+      }, 3000);
+    };
+
+    // 350ms Hardware Animation Loop (matches cyd_digivice_v3.ino)
+    setInterval(() => {
+      state.animOffset++;
+      renderTftScreen();
+    }, 350);
+
+    // Initial render
+    setStage(0);
+  </script>
+</body>
+</html>
