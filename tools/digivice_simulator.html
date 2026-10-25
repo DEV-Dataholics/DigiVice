@@ -9,12 +9,12 @@
     <!-- Top Header -->
     <div class="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-[var(--border)]">
       <div class="flex items-center gap-2">
-        <span class="inline-block w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
-        <h2 class="text-[var(--foreground)] font-semibold text-base">CYD 320x240 Emulator // Full-Screen Gundam Event Cutscenes</h2>
+        <span class="inline-block w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
+        <h2 class="text-[var(--foreground)] font-semibold text-base">CYD 320x240 Studio // Proto ➔ RX-Gundam ➔ Exia TRANS-AM</h2>
       </div>
       <div class="flex items-center gap-2 text-xs">
         <span class="text-[var(--muted-foreground)]">RGB Underglow:</span>
-        <span id="rgbBadge" class="px-2 py-0.5 rounded font-mono font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">GREEN (SKULL-SLIME)</span>
+        <span id="rgbBadge" class="px-2 py-0.5 rounded font-mono font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">GREEN (PROTO-GUNDAM)</span>
         <button id="btnExportCpp" class="px-2.5 py-1 rounded bg-[var(--primary)] text-[var(--primary-foreground)] font-medium hover:opacity-90 transition cursor-pointer">
           Copy C++ Sprite
         </button>
@@ -34,8 +34,8 @@
           <!-- 320x240 Native Resolution Canvas -->
           <canvas id="tftCanvas" width="320" height="240" class="rounded border border-cyan-500/40 cursor-pointer block" style="width: 320px; height: 240px; image-rendering: pixelated;"></canvas>
           <div class="flex justify-between items-center mt-1.5 px-1 text-xs text-[var(--muted-foreground)]">
-            <span>Spike CPU &ge; 70% or click Cutscene buttons</span>
-            <span id="fpsLabel" class="font-mono text-cyan-400">60 FPS FX</span>
+            <span>Click Pet Card on screen or buttons to test</span>
+            <span id="fpsLabel" class="font-mono text-rose-400">TRANS-AM READY</span>
           </div>
         </div>
       </div>
@@ -43,40 +43,40 @@
       <!-- Center: Telemetry & Full-Screen FX Triggers (4 cols) -->
       <div class="lg:col-span-4 flex flex-col gap-2.5 bg-[var(--background)] p-3 rounded-lg border border-[var(--border)]">
         <div class="flex items-center justify-between">
-          <span class="text-xs font-semibold uppercase tracking-wider text-cyan-400">⚡ Full-Screen FX Cutscenes</span>
+          <span class="text-xs font-semibold uppercase tracking-wider text-rose-400">⚡ Full-Screen Event Cutscenes</span>
           <span class="text-xs text-[var(--muted-foreground)] font-mono">320x240 Overlay</span>
         </div>
         <div class="grid grid-cols-2 gap-1.5 text-xs">
+          <button id="btnFxTransAm" class="px-2 py-1.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/50 font-mono font-semibold hover:bg-rose-500/30 transition cursor-pointer">
+            ☄️ TRANS-AM Burst
+          </button>
           <button id="btnFxLaser" class="px-2 py-1.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/50 font-mono font-semibold hover:bg-amber-500/30 transition cursor-pointer">
             ⚡ Buster Laser
           </button>
           <button id="btnFxEvo" class="px-2 py-1.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 font-mono font-semibold hover:bg-cyan-500/30 transition cursor-pointer">
-            🧬 Frame Evolve
+            🧬 Armor Evolve
           </button>
-          <button id="btnFxSaber" class="px-2 py-1.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 font-mono font-semibold hover:bg-emerald-500/30 transition cursor-pointer">
-            ⚔️ Beam Slash
-          </button>
-          <button id="btnFxEmp" class="px-2 py-1.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/50 font-mono font-semibold hover:bg-rose-500/30 transition cursor-pointer">
-            🚨 Red Alert EMP
+          <button id="btnFxEmp" class="px-2 py-1.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/50 font-mono font-semibold hover:bg-purple-500/30 transition cursor-pointer">
+            🚨 Breaker Alert
           </button>
         </div>
 
         <div class="pt-1.5 border-t border-[var(--border)]">
-          <div class="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mb-1">Lineage Stage</div>
+          <div class="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mb-1">Gundam Evolution Stage</div>
           <div class="grid grid-cols-4 gap-1 text-xs">
-            <button data-stage="0" class="stage-btn px-1.5 py-1 rounded border border-[var(--border)] font-mono text-center hover:border-emerald-400 cursor-pointer">0:Slime</button>
-            <button data-stage="1" class="stage-btn px-1.5 py-1 rounded border border-[var(--border)] font-mono text-center hover:border-cyan-400 cursor-pointer">1:Proto</button>
-            <button data-stage="2" class="stage-btn px-1.5 py-1 rounded border border-[var(--border)] font-mono text-center hover:border-amber-400 cursor-pointer">2:Gundam</button>
+            <button data-stage="0" class="stage-btn px-1.5 py-1 rounded border border-[var(--border)] font-mono text-center hover:border-emerald-400 cursor-pointer">0:Proto</button>
+            <button data-stage="1" class="stage-btn px-1.5 py-1 rounded border border-[var(--border)] font-mono text-center hover:border-cyan-400 cursor-pointer">1:RX-78</button>
+            <button data-stage="2" class="stage-btn px-1.5 py-1 rounded border border-[var(--border)] font-mono text-center hover:border-rose-400 cursor-pointer">2:TransAm</button>
             <button data-stage="3" class="stage-btn px-1.5 py-1 rounded border border-[var(--border)] font-mono text-center hover:border-rose-500 cursor-pointer">404</button>
           </div>
         </div>
 
         <div class="pt-1 border-t border-[var(--border)]">
           <div class="flex justify-between text-xs mb-1">
-            <span class="text-[var(--muted-foreground)]">K-2SO CPU (Spike &ge;70% fires Laser!)</span>
+            <span class="text-[var(--muted-foreground)]">K-2SO CPU (&ge;70% triggers TRANS-AM!)</span>
             <span id="cpuReadout" class="font-mono font-semibold text-cyan-400">18.5%</span>
           </div>
-          <input id="cpuSlider" type="range" min="0" max="100" value="18" class="w-full accent-cyan-400 cursor-pointer">
+          <input id="cpuSlider" type="range" min="0" max="100" value="18" class="w-full accent-rose-500 cursor-pointer">
         </div>
 
         <div class="flex items-center justify-between gap-2 pt-1 border-t border-[var(--border)] text-xs">
@@ -125,80 +125,31 @@
       '.': { hex: '#090E1A', name: 'Transparent' },
       '1': { hex: '#05070B', name: 'Obsidian Outline' },
       '2': { hex: '#005533', name: 'Deep Emerald' },
-      '3': { hex: '#00CC66', name: 'Matrix Green' },
-      '4': { hex: '#66FFBB', name: 'Neon Mint' },
+      '3': { hex: '#00CC66', name: 'GN Matrix Green' },
+      '4': { hex: '#66FFBB', name: 'GN Neon Mint' },
       '5': { hex: '#FFFFFF', name: 'Gundam White' },
       '6': { hex: '#003888', name: 'Gundam Deep Blue' },
       '7': { hex: '#00BBFF', name: 'Electric Cyan' },
-      '8': { hex: '#88FFFF', name: 'Laser Ice Cyan' },
-      '9': { hex: '#CC22FF', name: 'Neon Violet' },
-      'A': { hex: '#4A1208', name: 'Dark Rust' },
-      'B': { hex: '#EE1144', name: 'Gundam Crimson' },
-      'C': { hex: '#FF6600', name: 'Thruster Orange' },
+      '8': { hex: '#88FFFF', name: 'GN Ice Cyan' },
+      '9': { hex: '#CC22FF', name: 'Trans-Am Magenta' },
+      'A': { hex: '#4A1208', name: 'Dark Crimson Armor' },
+      'B': { hex: '#EE1144', name: 'Trans-Am Crimson' },
+      'C': { hex: '#FF6600', name: 'Trans-Am Orange' },
       'D': { hex: '#FFDD00', name: 'V-Fin Solar Gold' },
       'E': { hex: '#3A4659', name: 'Mecha Gunmetal' },
-      'F': { hex: '#8FA3B8', name: 'Bone / Light Steel' }
+      'F': { hex: '#8FA3B8', name: 'Light Titanium' }
     };
 
     // =========================================================================
-    // 2. Skull-Slime -> Proto-Mech -> RX-Cyber Gundam -> 404 Wreck Matrices
+    // 2. Pure Gundam Lineage:
+    //    Stage 0: PROTO-GUNDAM (Idle < 30%)
+    //    Stage 1: RX-CYBER GUNDAM (Active 30% - 70%)
+    //    Stage 2: GUNDAM EXIA TRANS-AM OVERDRIVE (Overload >= 70%)
+    //    Stage 3: 404 BATTLE-DAMAGED GUNDAM HEAD WRECK (Offline)
     // =========================================================================
     const SPRITES = {
+      // STAGE 0: PROTO-GUNDAM (Compact SD Unit with V-Fin & Blue Torso)
       0: [
-        [
-          "...........48...........",
-          "..........4854..........",
-          "...........22...........",
-          ".......1114444111.......",
-          ".....11444333344411.....",
-          "....1445311111133441....",
-          "...144511555555113341...",
-          "..14331555555555513341..",
-          "..143155FF5555FF551341..",
-          ".1433151115555111513321.",
-          ".1333151815555181513321.",
-          ".1333151115115111513321.",
-          ".13331FF55511555FF13321.",
-          "..133311F51FF15F113321..",
-          "..12333111511511133221..",
-          "..12233333111133332221..",
-          "...122233333333332221...",
-          "..12222223333332222221..",
-          ".1221122222222222211221.",
-          ".111..111222222111..111.",
-          ".........111111.........",
-          "........................",
-          "........................",
-          "........................"
-        ],
-        [
-          "........................",
-          "...........85...........",
-          "..........8548..........",
-          "......111144441111......",
-          "....1144443333444411....",
-          "...144553111111333441...",
-          "..14453115555551133441..",
-          "..14331555555555513321..",
-          ".1433155FF5555FF5513321.",
-          ".1433151115555111513321.",
-          ".1333151415555141513321.",
-          ".1333151115115111513321.",
-          ".13331FF55511555FF13321.",
-          ".1233311F51FF15F1133221.",
-          "..12333111511511133221..",
-          "..12223333111133332221..",
-          "...122223333333322221...",
-          ".1122222222222222222211.",
-          "122211122222222221112221",
-          "111....1111111111....111",
-          "........................",
-          "........................",
-          "........................",
-          "........................"
-        ]
-      ],
-      1: [
         [
           "......D..........D......",
           ".....1D1...11...1D1.....",
@@ -252,7 +203,9 @@
           "........................"
         ]
       ],
-      2: [
+
+      // STAGE 1: RX-CYBER GUNDAM (Full Mobile Suit with Wide V-Fin & Wing Pauldrons)
+      1: [
         [
           ".D5..................5D.",
           "..DD1......11......1DD..",
@@ -306,6 +259,66 @@
           "........................"
         ]
       ],
+
+      // STAGE 2: GUNDAM EXIA (TRANS-AM OVERDRIVE)
+      // Crimson/Magenta Trans-Am armor, blazing Emerald GN-Drive chest orb,
+      // GN particle shoulder wings & dual GN Sword blades!
+      2: [
+        [
+          "9D5........44........5D9",
+          ".9DD1.....1451.....1DD9.",
+          "..91DD1...1441...1DD19..",
+          ".4..11DD119BB911DD11..4.",
+          "..4..1BDDD9559DDDB1..4..",
+          "...91BBB1DDDDDD1BBB19...",
+          "...1BB911114411119BB1...",
+          "...1B91145511554119B1...",
+          "...199114431134411991...",
+          ".9911AA1195BB5911AA1199.",
+          "99BBBB111934439111BBBB99",
+          "9BB599B1AA34543AA1B995BB",
+          "1B91111AA345543AA11119B1",
+          "1441.91AA345543AA19.1441",
+          ".141..1AAA3443AAA1..141.",
+          ".141..11AA9BB9AA11..141.",
+          ".151.1BB91BBBB19BB1.151.",
+          "..111BB91.1AA1.19BB111..",
+          "....1991..1111..1991....",
+          "....111..........111....",
+          "........................",
+          "........................",
+          "........................",
+          "........................"
+        ],
+        [
+          "5D9.......4554.......9D5",
+          "91DD1.....1551.....1DD19",
+          ".911DD1...1441...1DD119.",
+          "..4.11DD11955911DD11.4..",
+          "...4.1BDDD9BB9DDDB1.4...",
+          "..991BBB1DDDDDD1BBB199..",
+          "...1BB911115511119BB1...",
+          "...1B91155411455119B1...",
+          "...199114481184411991...",
+          "99C11AA1195BB5911AA11C99",
+          "9BBBBB111945549111BBBBB9",
+          "1BB599B1AA4554AA1B995BB1",
+          "1441111AA345543AA1111441",
+          "1451941AA345543AA1491541",
+          ".151.41AAA3443AAA14.151.",
+          ".141..11AA9BB9AA11..141.",
+          "..11.1BB91BBBB19BB1.11..",
+          "....1BB91.1AA1.19BB1....",
+          "....1991..1111..1991....",
+          "....111..........111....",
+          "........................",
+          "........................",
+          "........................",
+          "........................"
+        ]
+      ],
+
+      // STAGE 3 (404): BATTLE-DAMAGED OFFLINE GUNDAM HEAD WRECK
       3: [
         [
           "........................",
@@ -368,10 +381,9 @@
     const state = {
       activeTab: 0,
       stage: 0,
-      prevStage: 0,
       animOffset: 0,
       editFrame: 0,
-      selectedBrush: 'D',
+      selectedBrush: '9',
       serverOnline: true,
       cpu: 18.5,
       ram: 42.0,
@@ -380,12 +392,11 @@
       circuitBreaker: false,
       backlight: 85,
       isPainting: false,
-      // Full-screen cutscene state
-      fxType: null,     // 'LASER', 'EVO', 'SABER', 'EMP'
+      fxType: null,     // 'TRANSAM', 'LASER', 'EVO', 'EMP'
       fxTick: 0,
-      fxMaxTicks: 24,
-      fxFromStage: 0,
-      fxToStage: 1
+      fxMaxTicks: 28,
+      fxFromStage: 1,
+      fxToStage: 2
     };
 
     const tft = document.getElementById('tftCanvas');
@@ -421,7 +432,6 @@
     }
     highlightBrush();
 
-    // Helper: Draw a 24x24 sprite at any scale & position
     function drawScaledSprite(stageIdx, frameIdx, ox, oy, scale, tintHex = null) {
       const matrix = SPRITES[stageIdx][frameIdx % 2];
       for (let r = 0; r < 24; r++) {
@@ -439,212 +449,198 @@
     // =========================================================================
     // 4. Full-Screen 320x240 Cinematic Event Cutscene Renderer
     // =========================================================================
-    function triggerFullScreenFx(type, fromS = 0, toS = 2) {
+    function triggerFullScreenFx(type, fromS = 1, toS = 2) {
       state.fxType = type;
       state.fxTick = 0;
-      state.fxMaxTicks = 26;
+      state.fxMaxTicks = 28;
       state.fxFromStage = fromS;
       state.fxToStage = toS;
       document.getElementById('modeIndicator').textContent = `FX: ${type}`;
-      document.getElementById('modeIndicator').className = 'text-amber-400 font-bold animate-pulse';
+      document.getElementById('modeIndicator').className = 'text-rose-400 font-bold animate-pulse';
     }
 
     function renderFullScreenCutscene() {
       const t = state.fxTick;
 
-      // 1. Deep Space / Speedline Backdrop (320x240)
-      ctx.fillStyle = '#050811';
-      ctx.fillRect(0, 0, 320, 240);
-
-      // Anime Horizontal Speedlines across full 320x240 screen
-      for (let i = 0; i < 28; i++) {
-        const ly = (i * 9 + t * 7) % 200 + 20;
-        const lx = ((i * 53 - t * 35) % 320 + 320) % 320;
-        const lw = 30 + (i % 4) * 25;
-        ctx.fillStyle = (state.fxType === 'EMP') ? '#3B0715' : '#112238';
-        ctx.fillRect(lx, ly, lw, 2);
-      }
-
-      if (state.fxType === 'LASER') {
+      if (state.fxType === 'TRANSAM') {
         // =====================================================================
-        // CUTSCENE 1: OMEGA RX-GUNDAM TWIN BUSTER LASER BLAST (CPU >= 70%)
+        // CUTSCENE 1: EXIA TRANS-AM OVERDRIVE (After-Images + GN Sword + Burst)
         // =====================================================================
-        // Top & Bottom Caution Cut-In Bars
+        ctx.fillStyle = '#180412';
+        ctx.fillRect(0, 0, 320, 240);
+
+        // Crimson & Magenta High-Speed Streak Lines
+        for (let i = 0; i < 30; i++) {
+          const ly = (i * 8 + t * 9) % 190 + 25;
+          const lx = ((i * 47 - t * 45) % 320 + 320) % 320;
+          ctx.fillStyle = (i % 2 === 0) ? '#4A0B2D' : '#11382A';
+          ctx.fillRect(lx, ly, 45, 2);
+        }
+
+        // Floating Emerald GN Drive Particles across the whole screen
+        for (let p = 0; p < 24; p++) {
+          const px = (p * 37 + t * 14) % 310 + 5;
+          const py = 210 - ((p * 29 + t * 11) % 180);
+          ctx.fillStyle = (p % 2 === 0) ? '#66FFBB' : '#00FF88';
+          ctx.fillRect(px, py, 3, 3);
+        }
+
+        // Top & Bottom TRANS-AM Cut-In Banners
+        ctx.fillStyle = '#3B071A';
+        ctx.fillRect(0, 0, 320, 24);
+        ctx.fillRect(0, 216, 320, 24);
+        ctx.fillStyle = '#00FF88';
+        ctx.fillRect(0, 23, 320, 2);
+        ctx.fillRect(0, 215, 320, 2);
+
+        ctx.font = 'bold 11px monospace';
+        ctx.fillStyle = '#FF2A55';
+        ctx.fillText('/// TRANS-AM SYSTEM // GN OVERDRIVE BURST ///', 12, 16);
+        ctx.fillStyle = '#66FFBB';
+        ctx.fillText(`GN PARTICLE OUTPUT: ${(280 + t * 8)}% [THREE TIMES SPEED]`, 10, 232);
+
+        if (t < 14) {
+          // PHASE 1: High-Speed Trans-Am After-Image Dash & Seven Sword X-Slash
+          const leadX = Math.min(180, 10 + t * 16);
+          // Ghost After-Image 1 (Deep Magenta)
+          if (t >= 2) drawScaledSprite(2, 0, Math.max(4, leadX - 65), 60, 5, '#550838');
+          // Ghost After-Image 2 (Neon Crimson)
+          if (t >= 1) drawScaledSprite(2, 1, Math.max(8, leadX - 32), 58, 5, '#AA0E44');
+          // Lead Exia Unit (Full 16-color Trans-Am)
+          drawScaledSprite(2, t % 2, leadX, 56, 5);
+
+          // Giant Emerald & Magenta X-Shaped GN Sword Slashes!
+          if (t >= 5) {
+            ctx.save();
+            ctx.strokeStyle = '#00FF88';
+            ctx.lineWidth = 10;
+            ctx.beginPath();
+            ctx.moveTo(40, 40);
+            ctx.lineTo(290, 195);
+            ctx.stroke();
+
+            ctx.strokeStyle = '#FF2A55';
+            ctx.lineWidth = 10;
+            ctx.beginPath();
+            ctx.moveTo(40, 195);
+            ctx.lineTo(290, 40);
+            ctx.stroke();
+
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(40, 40);
+            ctx.lineTo(290, 195);
+            ctx.moveTo(40, 195);
+            ctx.lineTo(290, 40);
+            ctx.stroke();
+            ctx.restore();
+          }
+        } else {
+          // PHASE 2: GN-DRIVE FULL-BURST LASER CANNON (Ticks 14..27)
+          drawScaledSprite(2, t % 2, 10, 56, 5);
+          const muzzleX = 114;
+          const muzzleY = 118;
+          const jit = (t % 2 === 0) ? 4 : -4;
+
+          // Outer Trans-Am Magenta/Crimson Plasma Wave
+          ctx.fillStyle = (t % 2 === 0) ? '#EE1144' : '#CC22FF';
+          ctx.fillRect(muzzleX, muzzleY - 40 + jit, 206, 80);
+
+          // Mid GN Emerald Matrix Wave
+          ctx.fillStyle = (t % 2 === 0) ? '#00FF88' : '#66FFBB';
+          ctx.fillRect(muzzleX, muzzleY - 24 - jit, 206, 48);
+
+          // Inner Pure White Zero Core
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(muzzleX, muzzleY - 11, 206, 22);
+
+          // Expanding GN Ring Pulses
+          ctx.strokeStyle = '#66FFBB';
+          ctx.lineWidth = 2;
+          for (let r = 0; r < 3; r++) {
+            const rx = muzzleX + ((t * 22 + r * 65) % 190);
+            ctx.strokeRect(rx, muzzleY - 44, 8, 88);
+          }
+        }
+
+      } else if (state.fxType === 'LASER') {
+        // =====================================================================
+        // CUTSCENE 2: RX-GUNDAM TWIN BUSTER LASER BLAST
+        // =====================================================================
+        ctx.fillStyle = '#050811';
+        ctx.fillRect(0, 0, 320, 240);
+        for (let i = 0; i < 24; i++) {
+          const ly = (i * 9 + t * 7) % 190 + 25;
+          const lx = ((i * 53 - t * 35) % 320 + 320) % 320;
+          ctx.fillStyle = '#112238';
+          ctx.fillRect(lx, ly, 40, 2);
+        }
+
         ctx.fillStyle = '#2A0810';
         ctx.fillRect(0, 0, 320, 24);
         ctx.fillRect(0, 216, 320, 24);
-        ctx.fillStyle = '#FFB800';
-        for (let sx = -20; sx < 340; sx += 24) {
-          const offset = (t * 4) % 24;
-          ctx.fillRect(sx + offset, 0, 12, 3);
-          ctx.fillRect(sx - offset, 237, 12, 3);
-        }
         ctx.font = 'bold 11px monospace';
         ctx.fillStyle = '#FFDD00';
-        ctx.fillText('/// WARNING: CPU OVERLOAD // TWIN BUSTER LASER ///', 10, 16);
+        ctx.fillText('/// RX-GUNDAM // HYPER MEGA LAUNCHER ///', 18, 16);
         ctx.fillStyle = '#00F0FF';
-        ctx.fillText(`ZERO-SYSTEM OUTPUT: ${(85 + (t % 15)).toFixed(1)}% [HYPER-MODE]`, 18, 232);
+        ctx.fillText('TARGET LOCKED // FULL CONVERGENCE', 38, 232);
 
-        // Draw Giant 5x Scale Omega RX-Gundam on Left (120x120 px)
-        const shakeX = (t >= 7 && t % 2 === 0) ? -3 : 0;
-        drawScaledSprite(2, t % 2, 8 + shakeX, 56, 5);
-
+        drawScaledSprite(1, t % 2, 8, 56, 5);
         const muzzleX = 112;
         const muzzleY = 118;
 
-        if (t < 7) {
-          // PHASE 1: ENERGY CONDENSATION & CHARGE SPHERE (Ticks 0..6)
-          const radius = 6 + t * 4;
+        if (t < 6) {
+          const radius = 6 + t * 5;
           ctx.strokeStyle = '#00F0FF';
           ctx.lineWidth = 2;
           ctx.beginPath();
           ctx.arc(muzzleX, muzzleY, radius, 0, Math.PI * 2);
           ctx.stroke();
-
-          ctx.fillStyle = (t % 2 === 0) ? '#FFDD00' : '#66FFBB';
+          ctx.fillStyle = '#FFDD00';
           ctx.beginPath();
-          ctx.arc(muzzleX, muzzleY, Math.max(3, radius - 6), 0, Math.PI * 2);
+          ctx.arc(muzzleX, muzzleY, Math.max(3, radius - 5), 0, Math.PI * 2);
           ctx.fill();
-
-          // Converging charge particles
-          ctx.fillStyle = '#FFFFFF';
-          for (let p = 0; p < 8; p++) {
-            const ang = (p * Math.PI / 4) + t * 0.5;
-            const dist = 36 - t * 4;
-            ctx.fillRect(muzzleX + Math.cos(ang) * dist, muzzleY + Math.sin(ang) * dist, 3, 3);
-          }
-          ctx.font = 'bold 12px monospace';
-          ctx.fillStyle = '#66FFBB';
-          ctx.fillText('CHARGING CONDENSER...', 140, 122);
         } else {
-          // PHASE 2: FULL-SCREEN TWIN BUSTER LASER BEAM (Ticks 7..25)
-          const beamEnd = Math.min(320, muzzleX + (t - 6) * 45);
-          const beamW = beamEnd - muzzleX;
-          const jitter = (t % 2 === 0) ? 4 : -4;
-
-          // Screen Flash on Initial Fire
-          if (t === 7 || t === 8) {
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
-            ctx.fillRect(0, 24, 320, 192);
-          }
-
-          // Outer Plasma Halo (Cyan / Magenta)
+          const beamW = Math.min(208, (t - 5) * 45);
+          const jit = (t % 2 === 0) ? 3 : -3;
           ctx.fillStyle = (t % 2 === 0) ? '#00BBFF' : '#FF007F';
-          ctx.fillRect(muzzleX, muzzleY - 34 + jitter, beamW, 68);
-
-          // Mid Beam Layer (Matrix Emerald / Solar Gold)
+          ctx.fillRect(muzzleX, muzzleY - 32 + jit, beamW, 64);
           ctx.fillStyle = (t % 2 === 0) ? '#00FF88' : '#FFDD00';
-          ctx.fillRect(muzzleX, muzzleY - 22 - jitter / 2, beamW, 44);
-
-          // Inner High-Energy Core (Pure White)
+          ctx.fillRect(muzzleX, muzzleY - 20 - jit, beamW, 40);
           ctx.fillStyle = '#FFFFFF';
-          ctx.fillRect(muzzleX, muzzleY - 11, beamW, 22);
-
-          // Muzzle Shockwave Rings
-          ctx.strokeStyle = '#FFFFFF';
-          ctx.lineWidth = 2;
-          for (let r = 0; r < 3; r++) {
-            const rx = muzzleX + ((t * 18 + r * 65) % 190);
-            if (rx < beamEnd) {
-              ctx.strokeRect(rx, muzzleY - 38, 6, 76);
-            }
-          }
-
-          // Impact Sparks on Right Edge
-          if (beamEnd >= 310) {
-            ctx.fillStyle = '#FFDD00';
-            for (let s = 0; s < 10; s++) {
-              const sy = muzzleY - 50 + ((s * 19 + t * 13) % 100);
-              const sx = 280 + ((s * 11 + t * 7) % 38);
-              ctx.fillRect(sx, sy, 5, 5);
-            }
-          }
+          ctx.fillRect(muzzleX, muzzleY - 10, beamW, 20);
         }
 
       } else if (state.fxType === 'EVO') {
         // =====================================================================
-        // CUTSCENE 2: DIGI-ARMOR / MOBILE SUIT EVOLUTION SEQUENCE
+        // CUTSCENE 3: MOBILE SUIT ARMOR EVOLUTION SEQUENCE
         // =====================================================================
+        ctx.fillStyle = '#050811';
+        ctx.fillRect(0, 0, 320, 240);
         ctx.fillStyle = '#0A192F';
         ctx.fillRect(0, 0, 320, 24);
         ctx.fillRect(0, 216, 320, 24);
         ctx.font = 'bold 11px monospace';
         ctx.fillStyle = '#00F0FF';
-        ctx.fillText('/// G-FRAME EVOLUTION // ARMOR ASSEMBLY ///', 14, 16);
+        ctx.fillText('/// G-FRAME EVOLUTION // MOBILE SUIT UPGRADE ///', 6, 16);
         ctx.fillStyle = '#00FF88';
-        const sNames = ['SKULL-SLIME', 'PROTO-GUNDAM', 'OMEGA RX-GUNDAM', '404 WRECK'];
+        const sNames = ['PROTO-GUNDAM', 'RX-CYBER GUNDAM', 'EXIA TRANS-AM', '404 WRECK'];
         ctx.fillText(`${sNames[state.fxFromStage]}  >>>  ${sNames[state.fxToStage]}`, 38, 232);
 
-        // Matrix DNA / Data Columns
-        ctx.fillStyle = 'rgba(0, 240, 255, 0.25)';
-        for (let c = 0; c < 16; c++) {
-          const cx = c * 20;
-          const cy = (t * 14 + c * 31) % 190 + 24;
-          ctx.fillRect(cx, cy, 2, 18);
-        }
-
-        // Expanding Holo-Rings in Center (x=160, y=120)
         ctx.strokeStyle = (t % 2 === 0) ? '#00F0FF' : '#FFDD00';
         ctx.lineWidth = 2;
         ctx.strokeRect(160 - t * 5, 120 - t * 3, t * 10, t * 6);
 
-        // Alternating Silhouette Morph at 5x Scale (120x120)
-        const showNew = (t > 12) || (t % 2 === 0);
+        const showNew = (t > 13) || (t % 2 === 0);
         const curS = showNew ? state.fxToStage : state.fxFromStage;
-        const flashWhite = (t >= 8 && t <= 13 && t % 2 === 1);
+        const flashWhite = (t >= 8 && t <= 14 && t % 2 === 1);
         drawScaledSprite(curS, t % 2, 100, 56, 5, flashWhite ? '#FFFFFF' : null);
 
-      } else if (state.fxType === 'SABER') {
-        // =====================================================================
-        // CUTSCENE 3: MISSION ENGAGED // BEAM SABER & HEAD VULCANS
-        // =====================================================================
-        ctx.fillStyle = '#06281E';
-        ctx.fillRect(0, 0, 320, 24);
-        ctx.fillRect(0, 216, 320, 24);
-        ctx.font = 'bold 11px monospace';
-        ctx.fillStyle = '#00FF88';
-        ctx.fillText('/// ANDOR PROTOCOL // BEAM SABER INTERCEPT ///', 10, 16);
-        ctx.fillStyle = '#00F0FF';
-        ctx.fillText('DETERMINISTIC GATES ARMED // TARGET LOCKED', 18, 232);
-
-        // Draw 5x Gundam lunging forward
-        const lungeX = Math.min(45, t * 4);
-        drawScaledSprite(2, t % 2, 10 + lungeX, 56, 5);
-
-        // Giant Diagonal Neon Pink/White Beam Saber Slash across screen!
-        if (t >= 5) {
-          ctx.save();
-          ctx.strokeStyle = '#FF007F';
-          ctx.lineWidth = 18;
-          ctx.beginPath();
-          ctx.moveTo(110, 185);
-          ctx.lineTo(110 + Math.min(195, (t - 4) * 28), 185 - Math.min(145, (t - 4) * 21));
-          ctx.stroke();
-
-          ctx.strokeStyle = '#FFFFFF';
-          ctx.lineWidth = 6;
-          ctx.beginPath();
-          ctx.moveTo(110, 185);
-          ctx.lineTo(110 + Math.min(195, (t - 4) * 28), 185 - Math.min(145, (t - 4) * 21));
-          ctx.stroke();
-          ctx.restore();
-        }
-
-        // Target Reticle on Right
-        ctx.strokeStyle = '#00FF88';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(215, 65, 80, 80);
-        ctx.fillStyle = '#00FF88';
-        ctx.fillText('GATE 0..3', 226, 110);
-
       } else if (state.fxType === 'EMP') {
-        // =====================================================================
-        // CUTSCENE 4: CIRCUIT BREAKER // RED COMET EMP ALERT
-        // =====================================================================
         const flash = (t % 2 === 0);
         ctx.fillStyle = flash ? '#550518' : '#1F030A';
         ctx.fillRect(0, 0, 320, 240);
-
         ctx.fillStyle = '#FF2A55';
         ctx.fillRect(0, 0, 320, 26);
         ctx.fillRect(0, 214, 320, 26);
@@ -653,15 +649,7 @@
         ctx.fillText('!!! EMERGENCY: CIRCUIT BREAKER TRIPPED !!!', 18, 17);
         ctx.fillStyle = '#FFDD00';
         ctx.fillText('SAFETY INTERVENTION // DEPLOY HALTED', 34, 231);
-
         drawScaledSprite(state.stage, t % 2, 100, 56, 5, flash ? '#FF2A55' : null);
-
-        // Red Glitch Scanlines
-        ctx.fillStyle = '#00F0FF';
-        for (let g = 0; g < 6; g++) {
-          const gy = (t * 23 + g * 37) % 180 + 30;
-          ctx.fillRect(20, gy, 280, 2);
-        }
       }
     }
 
@@ -669,13 +657,13 @@
     // 5. Render 72x72 Pet Sanctuary onto Normal HUD (x=15, y=41)
     // =========================================================================
     function drawPetSanctuary(ox, oy) {
-      const pedColors = ['#00FF88', '#00F0FF', '#FFB800', '#FF2A55'];
+      const pedColors = ['#00FF88', '#00F0FF', '#FF2A55', '#FF2A55'];
       const pedColor = pedColors[state.stage] || '#FF2A55';
 
       for (let y = 0; y < 72; y++) {
         for (let x = 0; x < 72; x++) {
           const isGrid = (x % 12 === 0) || (y % 12 === 0);
-          ctx.fillStyle = isGrid ? '#131D33' : '#090E1A';
+          ctx.fillStyle = isGrid ? (state.stage === 2 ? '#2D1024' : '#131D33') : (state.stage === 2 ? '#140610' : '#090E1A');
           ctx.fillRect(ox + x, oy + y, 1, 1);
         }
       }
@@ -694,13 +682,14 @@
 
       drawScaledSprite(state.stage, state.animOffset % 2, ox, oy, 3);
 
+      // Rising Particles (Emerald GN particles in Trans-Am mode!)
       const pCols = [10, 58, 16, 62];
-      ctx.fillStyle = pedColor;
+      ctx.fillStyle = (state.stage === 2) ? '#66FFBB' : pedColor;
       for (let i = 0; i < 4; i++) {
         const py = 60 - ((state.animOffset * 5 + i * 15) % 54);
         const px = pCols[i] + ((state.animOffset + i) % 3) - 1;
         if (px >= 2 && px < 70 && py >= 2 && py < 68) {
-          ctx.fillRect(ox + px, oy + py, 2, 1);
+          ctx.fillRect(ox + px, oy + py, 2, 2);
         }
       }
     }
@@ -733,14 +722,14 @@
       if (state.activeTab === 0) {
         ctx.fillStyle = '#131A29';
         ctx.fillRect(6, 32, 90, 94);
-        ctx.strokeStyle = '#00F0FF';
+        ctx.strokeStyle = (state.stage === 2) ? '#FF2A55' : '#00F0FF';
         ctx.lineWidth = 1;
         ctx.strokeRect(6.5, 32.5, 89, 93);
 
         drawPetSanctuary(15, 41);
 
-        const stageNames = ['AI: SKULL-SLIME', 'AI: PROTO-GUNDAM', 'AI: OMEGA RX-GUNDAM', 'AI: 404 UNIT WRECK'];
-        const stageCols  = ['#00FF88', '#00F0FF', '#FFB800', '#FF2A55'];
+        const stageNames = ['AI: PROTO-GUNDAM', 'AI: RX-CYBER GUNDAM', 'AI: EXIA [TRANS-AM]', 'AI: 404 UNIT WRECK'];
+        const stageCols  = ['#00FF88', '#00F0FF', '#FF2A55', '#FF2A55'];
         ctx.font = 'bold 12px monospace';
         ctx.fillStyle = stageCols[state.stage];
         ctx.fillText(stageNames[state.stage], 108, 46);
@@ -749,6 +738,9 @@
         if (state.circuitBreaker) {
           ctx.fillStyle = '#FF2A55';
           ctx.fillText('STATUS: CIRCUIT BREAKER!', 108, 64);
+        } else if (state.stage === 2) {
+          ctx.fillStyle = '#66FFBB';
+          ctx.fillText('GN-DRIVE: TRANS-AM OVERDRIVE', 108, 64);
         } else if (state.missionActive) {
           ctx.fillStyle = '#00F0FF';
           ctx.fillText('STATUS: MISSION ACTIVE', 108, 64);
@@ -762,7 +754,7 @@
 
         ctx.fillStyle = '#1B2438';
         ctx.fillRect(108, 94, 145, 10);
-        ctx.fillStyle = (state.cpu >= 70) ? '#FFB800' : '#00F0FF';
+        ctx.fillStyle = (state.cpu >= 70) ? '#FF2A55' : '#00F0FF';
         ctx.fillRect(108, 94, Math.round(1.45 * state.cpu), 10);
 
         ctx.fillStyle = '#F0F6FC';
@@ -774,11 +766,11 @@
         ctx.strokeRect(6.5, 134.5, 307, 63);
 
         ctx.fillStyle = '#00F0FF';
-        ctx.fillText('GUNDAM EVOLUTION // EVENT CUTSCENE ENGINE', 14, 150);
+        ctx.fillText('CELESTIAL BEING // GUNDAM EVOLUTION DECK', 14, 150);
         ctx.fillStyle = '#738A9C';
         ctx.fillText(`POLLER: ${state.serverOnline ? 'active' : 'offline'}   |   OLLAMA: ${state.serverOnline ? 'active' : 'offline'}`, 14, 168);
         ctx.fillStyle = '#00FF88';
-        ctx.fillText('[ TAP PET CARD TO FIRE BUSTER LASER CUTSCENE ]', 14, 186);
+        ctx.fillText('[ TAP PET CARD FOR FULL-SCREEN TRANS-AM ]', 14, 186);
 
       } else if (state.activeTab === 1) {
         ctx.font = 'bold 12px monospace';
@@ -920,7 +912,6 @@
 
     tft.addEventListener('click', e => {
       if (state.fxType) {
-        // Clicking during cutscene skips it
         state.fxType = null;
         renderTftScreen();
         return;
@@ -936,7 +927,8 @@
       }
 
       if (state.activeTab === 0 && x >= 6 && x <= 96 && y >= 32 && y <= 126) {
-        triggerFullScreenFx('LASER');
+        const nextS = (state.stage + 1) % 4;
+        setStage(nextS, true);
       }
     });
 
@@ -952,17 +944,17 @@
         badge.className = 'px-2 py-0.5 rounded font-mono font-semibold bg-rose-600/30 text-amber-300 border border-rose-500';
         pcb.style.boxShadow = '0 0 30px rgba(255, 42, 85, 0.5)';
       } else if (state.stage === 0) {
-        badge.textContent = 'GREEN (SKULL-SLIME)';
+        badge.textContent = 'GREEN (PROTO-GUNDAM)';
         badge.className = 'px-2 py-0.5 rounded font-mono font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40';
         pcb.style.boxShadow = '0 0 24px rgba(0, 255, 136, 0.22)';
       } else if (state.stage === 1) {
-        badge.textContent = 'CYAN (PROTO-GUNDAM)';
+        badge.textContent = 'CYAN (RX-CYBER GUNDAM)';
         badge.className = 'px-2 py-0.5 rounded font-mono font-semibold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40';
         pcb.style.boxShadow = '0 0 24px rgba(0, 240, 255, 0.25)';
       } else {
-        badge.textContent = 'GOLD/AMBER (RX-GUNDAM)';
-        badge.className = 'px-2 py-0.5 rounded font-mono font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40';
-        pcb.style.boxShadow = '0 0 28px rgba(255, 184, 0, 0.35)';
+        badge.textContent = 'CRIMSON/MAGENTA (TRANS-AM)';
+        badge.className = 'px-2 py-0.5 rounded font-mono font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/40';
+        pcb.style.boxShadow = '0 0 30px rgba(238, 17, 68, 0.45)';
       }
     }
 
@@ -981,8 +973,8 @@
 
       if (allowCutscene && s !== oldStage && state.serverOnline) {
         if (s === 2) {
-          triggerFullScreenFx('LASER', oldStage, s);
-        } else if (s > oldStage && s < 3) {
+          triggerFullScreenFx('TRANSAM', oldStage, s);
+        } else if (s === 1) {
           triggerFullScreenFx('EVO', oldStage, s);
         }
       }
@@ -1002,17 +994,18 @@
     }
 
     // FX Buttons
-    document.getElementById('btnFxLaser').onclick = () => {
+    document.getElementById('btnFxTransAm').onclick = () => {
       setStage(2, false);
-      triggerFullScreenFx('LASER', 1, 2);
+      triggerFullScreenFx('TRANSAM', 1, 2);
+    };
+    document.getElementById('btnFxLaser').onclick = () => {
+      setStage(1, false);
+      triggerFullScreenFx('LASER', 0, 1);
     };
     document.getElementById('btnFxEvo').onclick = () => {
       const nextS = (state.stage === 0) ? 1 : 2;
       triggerFullScreenFx('EVO', state.stage, nextS);
       setStage(nextS, false);
-    };
-    document.getElementById('btnFxSaber').onclick = () => {
-      triggerFullScreenFx('SABER', state.stage, 2);
     };
     document.getElementById('btnFxEmp').onclick = () => {
       triggerFullScreenFx('EMP', state.stage, state.stage);
@@ -1035,7 +1028,7 @@
 
     document.getElementById('chkMission').onchange = e => {
       state.missionActive = e.target.checked;
-      if (state.missionActive) triggerFullScreenFx('SABER');
+      if (state.missionActive) triggerFullScreenFx('LASER');
       renderTftScreen();
     };
 
@@ -1075,7 +1068,6 @@
       }, 3000);
     };
 
-    // High-speed 90ms loop for smooth full-screen cutscenes & 350ms HUD idle
     let subTick = 0;
     setInterval(() => {
       subTick++;

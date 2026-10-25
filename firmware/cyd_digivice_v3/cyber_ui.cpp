@@ -447,11 +447,11 @@ void CyberUI::drawSpriteOnCanvas(int stage, int scale) {
   if (!petCanvas) return;
 
   // 1. Render Cyber-Sanctuary Background & Subtle Grid (72x72)
-  lv_color_t bgBase = lv_color_hex(0x090E1A);
-  lv_color_t bgGrid = lv_color_hex(0x131D33);
-  lv_color_t pedColor = CYBER_COLOR_GREEN;
-  if (stage == 1) pedColor = CYBER_COLOR_CYAN;
-  else if (stage == 2) pedColor = CYBER_COLOR_AMBER;
+  lv_color_t bgBase = (stage == 2) ? lv_color_hex(0x180612) : lv_color_hex(0x090E1A);
+  lv_color_t bgGrid = (stage == 2) ? lv_color_hex(0x2F0A22) : lv_color_hex(0x131D33);
+  lv_color_t pedColor = CYBER_COLOR_CYAN;
+  if (stage == 1) pedColor = CYBER_COLOR_GREEN;
+  else if (stage == 2) pedColor = CYBER_COLOR_MAGENTA;
   else if (stage >= 3) pedColor = CYBER_COLOR_RED;
 
   for (int y = 0; y < 72; y++) {
@@ -530,16 +530,16 @@ void CyberUI::triggerEvolutionFanfare(int stage) {
   drawSpriteOnCanvas(currentStage);
   switch (currentStage) {
     case 0:
-      lv_label_set_text(petStageLabel, "AI: SKULL-SLIME");
-      lv_obj_set_style_text_color(petStageLabel, CYBER_COLOR_GREEN, 0);
-      break;
-    case 1:
       lv_label_set_text(petStageLabel, "AI: PROTO-GUNDAM");
       lv_obj_set_style_text_color(petStageLabel, CYBER_COLOR_CYAN, 0);
       break;
+    case 1:
+      lv_label_set_text(petStageLabel, "AI: RX-CYBER GUNDAM");
+      lv_obj_set_style_text_color(petStageLabel, CYBER_COLOR_GREEN, 0);
+      break;
     case 2:
-      lv_label_set_text(petStageLabel, "AI: OMEGA RX-GUNDAM");
-      lv_obj_set_style_text_color(petStageLabel, CYBER_COLOR_AMBER, 0);
+      lv_label_set_text(petStageLabel, "AI: EXIA [TRANS-AM]");
+      lv_obj_set_style_text_color(petStageLabel, CYBER_COLOR_MAGENTA, 0);
       break;
     default:
       lv_label_set_text(petStageLabel, "AI: 404 UNIT WRECK");

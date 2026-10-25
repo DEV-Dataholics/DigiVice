@@ -111,17 +111,17 @@ void updateRgbUnderglow() {
 
   // Normal CPU Reactive Underglow
   if (telemetry.cpu < 30.0f) {
-    setRgbLed(0, 1, 0); // Green (Bit-Slime)
+    setRgbLed(0, 1, 1); // Cyan (Proto-Gundam)
   } else if (telemetry.cpu < 70.0f) {
-    setRgbLed(0, 1, 1); // Cyan (Phantom-Node)
+    setRgbLed(0, 1, 0); // Green (RX-Cyber Gundam)
   } else {
-    setRgbLed(1, 1, 0); // Amber (Daemon-Core)
+    setRgbLed(1, 0, 1); // Crimson-Magenta (Exia Trans-Am Overdrive)
   }
 }
 
 // ============================================================================
 // Full-Screen 320x240 Hardware Gundam Event Cutscene Engine
-// fxType: 0 = TWIN BUSTER LASER, 1 = G-FRAME EVOLUTION, 2 = BEAM SABER, 3 = EMP
+// fxType: 0 = TRANS-AM OVERDRIVE, 1 = G-FRAME EVOLUTION, 2 = TWIN BUSTER LASER
 // ============================================================================
 
 static uint16_t resolveGfxColor(char code) {
@@ -140,7 +140,7 @@ static uint16_t resolveGfxColor(char code) {
     case 'C': return gfx.color565(0xFF, 0x66, 0x00);
     case 'D': return gfx.color565(0xFF, 0xDD, 0x00);
     case 'E': return gfx.color565(0x3A, 0x46, 0x59);
-    case 'F': return gfx.color565(0x8F, 0xA3, 0xB8);
+    case 'F': return gfx.color565(0x8FA3B8 >> 16, (0x8FA3B8 >> 8) & 0xFF, 0x8FA3B8 & 0xFF);
     default:  return gfx.color565(0x05, 0x08, 0x11);
   }
 }
@@ -167,15 +167,16 @@ static void drawGfxSpriteScaled(int stage, int frame, int ox, int oy, int scale,
 }
 
 void triggerGundamCutscene(uint8_t fxType, int fromS, int toS) {
-  uint16_t colBg      = gfx.color565(0x05, 0x08, 0x11);
-  uint16_t colSpeed   = gfx.color565(0x11, 0x22, 0x38);
-  uint16_t colCyan    = gfx.color565(0x00, 0xF0, 0xFF);
-  uint16_t colGold    = gfx.color565(0xFF, 0xDD, 0x00);
-  uint16_t colMint    = gfx.color565(0x66, 0xFF, 0xBB);
-  uint16_t colGreen   = gfx.color565(0x00, 0xFF, 0x88);
-  uint16_t colMagenta = gfx.color565(0xFF, 0x00, 0x7F);
-  uint16_t colRed     = gfx.color565(0xFF, 0x2A, 0x55);
-  uint16_t colWhite   = 0xFFFF;
+  uint16_t colBg       = (fxType == 0) ? gfx.color565(0x16, 0x04, 0x0D) : gfx.color565(0x05, 0x08, 0x11);
+  uint16_t colSpeed    = (fxType == 0) ? gfx.color565(0x55, 0x0A, 0x2E) : gfx.color565(0x11, 0x22, 0x38);
+  uint16_t colCyan     = gfx.color565(0x00, 0xF0, 0xFF);
+  uint16_t colGold     = gfx.color565(0xFF, 0xDD, 0x00);
+  uint16_t colMint     = gfx.color565(0x66, 0xFF, 0xBB);
+  uint16_t colGreen    = gfx.color565(0x00, 0xFF, 0x88);
+  uint16_t colMagenta  = gfx.color565(0xFF, 0x00, 0x7F);
+  uint16_t colViolet   = gfx.color565(0xCC, 0x22, 0xFF);
+  uint16_t colRed      = gfx.color565(0xFF, 0x2A, 0x55);
+  uint16_t colWhite    = 0xFFFF;
 
   gfx.startWrite();
   for (int t = 0; t < 18; t++) {
@@ -189,43 +190,54 @@ void triggerGundamCutscene(uint8_t fxType, int fromS, int toS) {
     }
 
     if (fxType == 0) {
-      // TWIN BUSTER LASER CUTSCENE (Omega RX-Gundam)
-      gfx.fillRect(0, 0, 320, 24, gfx.color565(0x2A, 0x08, 0x10));
-      gfx.fillRect(0, 216, 320, 24, gfx.color565(0x2A, 0x08, 0x10));
-      gfx.setTextColor(colGold);
+      // GUNDAM EXIA: TRANS-AM OVERDRIVE BURST CUTSCENE
+      gfx.fillRect(0, 0, 320, 24, gfx.color565(0x3B, 0x05, 0x1C));
+      gfx.fillRect(0, 216, 320, 24, gfx.color565(0x3B, 0x05, 0x1C));
+      gfx.setTextColor(colMint);
       gfx.setCursor(10, 7);
-      gfx.print("WARNING: ZERO-SYSTEM // TWIN BUSTER LASER");
-      gfx.setTextColor(colCyan);
-      gfx.setCursor(14, 223);
-      gfx.print("HYPER-MEGA CANNON: MAXIMUM OUTPUT");
+      gfx.print("GN-DRIVE OVERLOAD // TRANS-AM SYSTEM!!");
+      gfx.setTextColor(colGold);
+      gfx.setCursor(12, 223);
+      gfx.print("OUTPUT: 300% // GN SWORD FULL-BURST");
 
-      int shakeX = (t >= 5 && (t % 2 == 0)) ? -3 : 0;
-      drawGfxSpriteScaled(2, t % 2, 8 + shakeX, 56, 5);
+      // Floating Emerald GN Particles
+      for (int p = 0; p < 16; p++) {
+        int px = (p * 47 + t * 23) % 310 + 4;
+        int py = (p * 31 - t * 11 + 400) % 180 + 28;
+        gfx.fillRect(px, py, 3, 3, (p % 2 == 0) ? colMint : colGreen);
+      }
 
-      int muzzleX = 112;
+      // 3 High-Speed Trans-Am After-Image Clones
+      drawGfxSpriteScaled(2, t % 2, 4 + (t % 3) * 4, 62, 5, colRed);
+      drawGfxSpriteScaled(2, t % 2, 18 + (t % 2) * 4, 58, 5, colViolet);
+
+      int shakeX = (t >= 5 && (t % 2 == 0)) ? 4 : 0;
+      drawGfxSpriteScaled(2, t % 2, 34 + shakeX, 54, 5);
+
+      int muzzleX = 136;
       int muzzleY = 118;
-      if (t < 5) {
-        int rad = 6 + t * 5;
-        gfx.drawCircle(muzzleX, muzzleY, rad, colCyan);
-        gfx.fillCircle(muzzleX, muzzleY, rad - 3, (t % 2 == 0) ? colGold : colMint);
+      if (t < 6) {
+        int rad = 8 + t * 6;
+        gfx.drawCircle(muzzleX, muzzleY, rad, colMint);
+        gfx.fillCircle(muzzleX, muzzleY, rad - 3, (t % 2 == 0) ? colGreen : colMagenta);
       } else {
-        int beamEnd = min(320, muzzleX + (t - 4) * 52);
+        // X-Shaped GN Sword Slashes + GN Full-Burst Beam
+        int beamEnd = min(320, muzzleX + (t - 5) * 56);
         int beamW = beamEnd - muzzleX;
         int jit = (t % 2 == 0) ? 3 : -3;
 
-        gfx.fillRect(muzzleX, muzzleY - 34 + jit, beamW, 68, (t % 2 == 0) ? colCyan : colMagenta);
-        gfx.fillRect(muzzleX, muzzleY - 22 - jit, beamW, 44, (t % 2 == 0) ? colGreen : colGold);
+        gfx.fillRect(muzzleX, muzzleY - 34 + jit, beamW, 68, (t % 2 == 0) ? colMagenta : colRed);
+        gfx.fillRect(muzzleX, muzzleY - 22 - jit, beamW, 44, (t % 2 == 0) ? colGreen : colMint);
         gfx.fillRect(muzzleX, muzzleY - 10, beamW, 20, colWhite);
 
-        for (int r = 0; r < 3; r++) {
-          int rx = muzzleX + ((t * 24 + r * 64) % 190);
-          if (rx < beamEnd) {
-            gfx.drawRect(rx, muzzleY - 38, 6, 76, colWhite);
-          }
+        // Diagonal GN Sword Slashes across right side
+        for (int s = 0; s < 5; s++) {
+          gfx.drawLine(180 + s, 32, 310 + s, 204, colMint);
+          gfx.drawLine(310 + s, 32, 180 + s, 204, colWhite);
         }
       }
     } else if (fxType == 1) {
-      // G-FRAME EVOLUTION CUT-IN
+      // G-FRAME EVOLUTION CUT-IN (Proto -> RX-Cyber -> Exia)
       gfx.fillRect(0, 0, 320, 24, gfx.color565(0x0A, 0x19, 0x2F));
       gfx.fillRect(0, 216, 320, 24, gfx.color565(0x0A, 0x19, 0x2F));
       gfx.setTextColor(colCyan);
@@ -236,7 +248,7 @@ void triggerGundamCutscene(uint8_t fxType, int fromS, int toS) {
       int32_t flash = (t >= 6 && t <= 10 && (t % 2 == 1)) ? (int32_t)colWhite : -1;
       drawGfxSpriteScaled(curS, t % 2, 100, 56, 5, flash);
     } else {
-      // RED ALERT / BEAM SABER
+      // RED ALERT / CIRCUIT BREAKER EMP
       gfx.fillRect(0, 0, 320, 24, colRed);
       gfx.fillRect(0, 216, 320, 24, colRed);
       gfx.setTextColor(colWhite);
