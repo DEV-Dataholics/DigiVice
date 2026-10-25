@@ -1,0 +1,14 @@
+[Unit]
+Description=K-2SO Digibadge Telemetry Daemon (ESP32 Server Monitor)
+After=network.target
+
+[Service]
+Type=simple
+User=dataholics
+WorkingDirectory=/opt/tira-worker
+ExecStart=/usr/bin/python3 -u /opt/tira-worker/k2so_metrics_daemon.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

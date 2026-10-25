@@ -1,0 +1,602 @@
+#include "cyber_ui.h"
+#include "sprites.h"
+#include "audio_synth.h"
+
+CyberUI cyberUI;
+
+// Callback function pointers
+static void (*onBacklightChange)(int) = nullptr;
+static void (*onManualPollTrigger)() = nullptr;
+static void (*onCircuitAckTrigger)() = nullptr;
+static void (*onAudioToggleTrigger)(bool) = nullptr;
+
+// Event wrappers
+static void slider_event_cb(lv_event_t * e) {
+  lv_obj_t * slider = (lv_obj_t *)lv_event_get_target(e);
+  int val = (int)lv_slider_get_value(slider);
+  if (onBacklightChange) {
+    onBacklightChange(val);
+  }
+}
+
+static void btn_poll_cb(lv_event_t * e) {
+  soundFx.playTap();
+  if (onManualPollTrigger) {
+    onManualPollTrigger();
+  }
+}
+
+static void btn_ack_cb(lv_event_t * e) {
+  soundFx.playChirp();
+  if (onCircuitAckTrigger) {
+    onCircuitAckTrigger();
+  }
+}
+
+static void sw_audio_cb(lv_event_t * e) {
+  lv_obj_t * sw = (lv_obj_t *)lv_event_get_target(e);
+  bool state = lv_obj_has_state(sw, LV_STATE_CHECKED);
+  soundFx.setMuted(!state);
+  if (state) soundFx.playTap();
+  if (onAudioToggleTrigger) {
+    onAudioToggleTrigger(state);
+  }
+}
+
+static void pet_touch_cb(lv_event_t * e) {
+  soundFx.playChirp();
+}
+
+void CyberUI::setBacklightCallback(void (*cb)(int)) { onBacklightChange = cb; }
+void CyberUI::setManualPollCallback(void (*cb)()) { onManualPollTrigger = cb; }
+void CyberUI::setResetCircuitBreakerCallback(void (*cb)()) { onCircuitAckTrigger = cb; }
+void CyberUI::setAudioToggleCallback(void (*cb)(bool)) { onAudioToggleTrigger = cb; }
+
+void CyberUI::createStyles() {
+  // 1. Dark Screen Background
+  lv_style_init(&styleDarkBg);
+  lv_style_set_bg_color(&styleDarkBg, CYBER_COLOR_BLACK);
+  lv_style_set_bg_opa(&styleDarkBg, LV_OPA_COVER);
+  lv_style_set_border_width(&styleDarkBg, 0);
+
+  // 2. Cyber Panel Card (Dark Slate with subtle border)
+  lv_style_init(&stylePanel);
+  lv_style_set_bg_color(&stylePanel, CYBER_COLOR_PANEL);
+  lv_style_set_bg_opa(&stylePanel, LV_OPA_COVER);
+  lv_style_set_border_color(&stylePanel, CYBER_COLOR_PANEL_ALT);
+  lv_style_set_border_width(&stylePanel, 1);
+  lv_style_set_radius(&stylePanel, 4);
+  lv_style_set_pad_all(&stylePanel, 6);
+
+  // 3. Cyber Accent Panel (Neon Cyan Border)
+  lv_style_init(&stylePanelAccent);
+  lv_style_set_bg_color(&stylePanelAccent, CYBER_COLOR_PANEL);
+  lv_style_set_bg_opa(&stylePanelAccent, LV_OPA_COVER);
+  lv_style_set_border_color(&stylePanelAccent, CYBER_COLOR_CYAN);
+  lv_style_set_border_width(&stylePanelAccent, 1);
+  lv_style_set_radius(&stylePanelAccent, 4);
+
+  // 4. Gate State Styles
+  lv_style_init(&styleGatePassed);
+  lv_style_set_bg_color(&styleGatePassed, lv_color_hex(0x06331A));
+  lv_style_set_border_color(&styleGatePassed, CYBER_COLOR_GREEN);
+  lv_style_set_border_width(&styleGatePassed, 1);
+  lv_style_set_radius(&styleGatePassed, 4);
+
+  lv_style_init(&styleGateFailed);
+  lv_style_set_bg_color(&styleGateFailed, lv_color_hex(0x3B0715));
+  lv_style_set_border_color(&styleGateFailed, CYBER_COLOR_RED);
+  lv_style_set_border_width(&styleGateFailed, 1);
+  lv_style_set_radius(&styleGateFailed, 4);
+
+  lv_style_init(&styleGateIdle);
+  lv_style_set_bg_color(&styleGateIdle, CYBER_COLOR_PANEL);
+  lv_style_set_border_color(&styleGateIdle, CYBER_COLOR_PANEL_ALT);
+  lv_style_set_border_width(&styleGateIdle, 1);
+  lv_style_set_radius(&styleGateIdle, 4);
+
+  // 5. Neon Touch Buttons
+  lv_style_init(&styleNeonBtn);
+  lv_style_set_bg_color(&styleNeonBtn, lv_color_hex(0x0D2A3A));
+  lv_style_set_border_color(&styleNeonBtn, CYBER_COLOR_CYAN);
+  lv_style_set_border_width(&styleNeonBtn, 1);
+  lv_style_set_radius(&styleNeonBtn, 4);
+  lv_style_set_text_color(&styleNeonBtn, CYBER_COLOR_CYAN);
+}
+
+void CyberUI::createHeader() {
+  lv_obj_t* header = lv_obj_create(lv_screen_active());
+  lv_obj_set_size(header, 320, 24);
+  lv_obj_set_pos(header, 0, 0);
+  lv_obj_add_style(header, &styleDarkBg, 0);
+  lv_obj_set_style_border_color(header, CYBER_COLOR_CYAN, 0);
+  lv_obj_set_style_border_width(header, 1, 0);
+  lv_obj_set_style_border_side(header, LV_BORDER_SIDE_BOTTOM, 0);
+  lv_obj_clear_flag(header, LV_OBJ_FLAG_SCROLLABLE);
+
+  headerLabelHost = lv_label_create(header);
+  lv_label_set_text(headerLabelHost, "[*] K-2SO: CONNECTING");
+  lv_obj_set_style_text_color(headerLabelHost, CYBER_COLOR_AMBER, 0);
+  lv_obj_align(headerLabelHost, LV_ALIGN_LEFT_MID, -6, 0);
+
+  headerLabelWifi = lv_label_create(header);
+  lv_label_set_text(headerLabelWifi, "WIFI: --");
+  lv_obj_set_style_text_color(headerLabelWifi, CYBER_COLOR_TEXT_DIM, 0);
+  lv_obj_align(headerLabelWifi, LV_ALIGN_RIGHT_MID, 6, 0);
+}
+
+void CyberUI::createTabview() {
+  // Tabview positioned below header
+  tabview = lv_tabview_create(lv_screen_active());
+  lv_tabview_set_tab_bar_position(tabview, LV_DIR_BOTTOM);
+  lv_tabview_set_tab_bar_size(tabview, 32);
+  lv_obj_set_pos(tabview, 0, 24);
+  lv_obj_set_size(tabview, 320, 216);
+  lv_obj_add_style(tabview, &styleDarkBg, 0);
+
+  // Style bottom tab button bar
+  lv_obj_t* tab_btns = lv_tabview_get_tab_bar(tabview);
+  lv_obj_set_style_bg_color(tab_btns, lv_color_hex(0x05070B), 0);
+  lv_obj_set_style_border_color(tab_btns, CYBER_COLOR_PANEL_ALT, 0);
+  lv_obj_set_style_border_side(tab_btns, LV_BORDER_SIDE_TOP, 0);
+  lv_obj_set_style_border_width(tab_btns, 1, 0);
+  lv_obj_set_style_text_color(tab_btns, CYBER_COLOR_TEXT_DIM, 0);
+  lv_obj_set_style_text_color(tab_btns, CYBER_COLOR_CYAN, LV_STATE_CHECKED);
+
+  // Create 4 Cyber Tabs
+  lv_obj_t* tab1 = lv_tabview_add_tab(tabview, "AI-PET");
+  lv_obj_t* tab2 = lv_tabview_add_tab(tabview, "GATES");
+  lv_obj_t* tab3 = lv_tabview_add_tab(tabview, "NODE");
+  lv_obj_t* tab4 = lv_tabview_add_tab(tabview, "DECK");
+
+  lv_obj_add_style(tab1, &styleDarkBg, 0);
+  lv_obj_add_style(tab2, &styleDarkBg, 0);
+  lv_obj_add_style(tab3, &styleDarkBg, 0);
+  lv_obj_add_style(tab4, &styleDarkBg, 0);
+
+  buildPetTab(tab1);
+  buildTacticalTab(tab2);
+  buildNodeTab(tab3);
+  buildDeckTab(tab4);
+}
+
+void CyberUI::buildPetTab(lv_obj_t* parent) {
+  // Pet Sanctuary Left Canvas Frame
+  lv_obj_t* petCard = lv_obj_create(parent);
+  lv_obj_set_size(petCard, 90, 94);
+  lv_obj_align(petCard, LV_ALIGN_TOP_LEFT, 6, 8);
+  lv_obj_add_style(petCard, &stylePanelAccent, 0);
+  lv_obj_clear_flag(petCard, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_add_event_cb(petCard, pet_touch_cb, LV_EVENT_CLICKED, NULL);
+
+  petCanvas = lv_canvas_create(petCard);
+  if (!canvasBuffer) {
+    canvasBuffer = (lv_color_t*)malloc(72 * 72 * sizeof(lv_color_t));
+  }
+  lv_canvas_set_buffer(petCanvas, canvasBuffer, 72, 72, LV_COLOR_FORMAT_RGB565);
+  lv_obj_center(petCanvas);
+
+  // Right Info Deck
+  petStageLabel = lv_label_create(parent);
+  lv_label_set_text(petStageLabel, "AI: 404 TOMBSTONE");
+  lv_obj_set_style_text_color(petStageLabel, CYBER_COLOR_CYAN, 0);
+  lv_obj_align(petStageLabel, LV_ALIGN_TOP_LEFT, 108, 12);
+
+  petStatusLabel = lv_label_create(parent);
+  lv_label_set_text(petStatusLabel, "STATUS: STANDBY");
+  lv_obj_set_style_text_color(petStatusLabel, CYBER_COLOR_TEXT_DIM, 0);
+  lv_obj_align(petStatusLabel, LV_ALIGN_TOP_LEFT, 108, 30);
+
+  // Energy / CPU Meter
+  lv_obj_t* lblEnergy = lv_label_create(parent);
+  lv_label_set_text(lblEnergy, "AI COGNITIVE LOAD:");
+  lv_obj_set_style_text_color(lblEnergy, CYBER_COLOR_AMBER, 0);
+  lv_obj_align(lblEnergy, LV_ALIGN_TOP_LEFT, 108, 52);
+
+  petEnergyBar = lv_bar_create(parent);
+  lv_obj_set_size(petEnergyBar, 140, 10);
+  lv_obj_align(petEnergyBar, LV_ALIGN_TOP_LEFT, 108, 70);
+  lv_obj_set_style_bg_color(petEnergyBar, CYBER_COLOR_PANEL_ALT, 0);
+  lv_obj_set_style_bg_color(petEnergyBar, CYBER_COLOR_CYAN, LV_PART_INDICATOR);
+
+  petEnergyVal = lv_label_create(parent);
+  lv_label_set_text(petEnergyVal, "0.0%");
+  lv_obj_set_style_text_color(petEnergyVal, CYBER_COLOR_TEXT_BRIGHT, 0);
+  lv_obj_align(petEnergyVal, LV_ALIGN_TOP_LEFT, 254, 68);
+
+  // Interactive Poke Button
+  lv_obj_t* btnPoke = lv_btn_create(parent);
+  lv_obj_set_size(btnPoke, 180, 28);
+  lv_obj_align(btnPoke, LV_ALIGN_BOTTOM_MID, 0, -8);
+  lv_obj_add_style(btnPoke, &styleNeonBtn, 0);
+  lv_obj_add_event_cb(btnPoke, pet_touch_cb, LV_EVENT_CLICKED, NULL);
+
+  lv_obj_t* lblPoke = lv_label_create(btnPoke);
+  lv_label_set_text(lblPoke, "> INTERACT / POKE AI <");
+  lv_obj_center(lblPoke);
+}
+
+void CyberUI::buildTacticalTab(lv_obj_t* parent) {
+  // Mission Header Banner
+  tacMissionLabel = lv_label_create(parent);
+  lv_label_set_text(tacMissionLabel, "[ MISSION: STANDBY | TICKET #291 ]");
+  lv_obj_set_style_text_color(tacMissionLabel, CYBER_COLOR_CYAN, 0);
+  lv_obj_align(tacMissionLabel, LV_ALIGN_TOP_LEFT, 8, 4);
+
+  tacStageLabel = lv_label_create(parent);
+  lv_label_set_text(tacStageLabel, "STAGE: IDLE  |  ATTEMPT: 0");
+  lv_obj_set_style_text_color(tacStageLabel, CYBER_COLOR_TEXT_DIM, 0);
+  lv_obj_align(tacStageLabel, LV_ALIGN_TOP_LEFT, 8, 20);
+
+  tacTimerLabel = lv_label_create(parent);
+  lv_label_set_text(tacTimerLabel, "TIME: 00:00.0");
+  lv_obj_set_style_text_color(tacTimerLabel, CYBER_COLOR_AMBER, 0);
+  lv_obj_align(tacTimerLabel, LV_ALIGN_TOP_RIGHT, -8, 20);
+
+  // 4 Gate Status Blocks (2x2 Grid)
+  // Gate 0: Integrity
+  gateCard0 = lv_obj_create(parent);
+  lv_obj_set_size(gateCard0, 145, 36);
+  lv_obj_align(gateCard0, LV_ALIGN_TOP_LEFT, 8, 40);
+  lv_obj_add_style(gateCard0, &styleGateIdle, 0);
+  lv_obj_clear_flag(gateCard0, LV_OBJ_FLAG_SCROLLABLE);
+  gateLabel0 = lv_label_create(gateCard0);
+  lv_label_set_text(gateLabel0, "G0: INTEGRITY [IDLE]");
+  lv_obj_center(gateLabel0);
+
+  // Gate 1: Linters
+  gateCard1 = lv_obj_create(parent);
+  lv_obj_set_size(gateCard1, 145, 36);
+  lv_obj_align(gateCard1, LV_ALIGN_TOP_RIGHT, -8, 40);
+  lv_obj_add_style(gateCard1, &styleGateIdle, 0);
+  lv_obj_clear_flag(gateCard1, LV_OBJ_FLAG_SCROLLABLE);
+  gateLabel1 = lv_label_create(gateCard1);
+  lv_label_set_text(gateLabel1, "G1: LINTERS   [IDLE]");
+  lv_obj_center(gateLabel1);
+
+  // Gate 2: Assertions
+  gateCard2 = lv_obj_create(parent);
+  lv_obj_set_size(gateCard2, 145, 36);
+  lv_obj_align(gateCard2, LV_ALIGN_TOP_LEFT, 8, 80);
+  lv_obj_add_style(gateCard2, &styleGateIdle, 0);
+  lv_obj_clear_flag(gateCard2, LV_OBJ_FLAG_SCROLLABLE);
+  gateLabel2 = lv_label_create(gateCard2);
+  lv_label_set_text(gateLabel2, "G2: ASSERTION [IDLE]");
+  lv_obj_center(gateLabel2);
+
+  // Gate 3: Circuit Breaker
+  gateCard3 = lv_obj_create(parent);
+  lv_obj_set_size(gateCard3, 145, 36);
+  lv_obj_align(gateCard3, LV_ALIGN_TOP_RIGHT, -8, 80);
+  lv_obj_add_style(gateCard3, &styleGateIdle, 0);
+  lv_obj_clear_flag(gateCard3, LV_OBJ_FLAG_SCROLLABLE);
+  gateLabel3 = lv_label_create(gateCard3);
+  lv_label_set_text(gateLabel3, "G3: CIRCUIT   [CLEAR]");
+  lv_obj_center(gateLabel3);
+
+  // Circuit Breaker Reset Action Button
+  btnAckCircuit = lv_btn_create(parent);
+  lv_obj_set_size(btnAckCircuit, 298, 28);
+  lv_obj_align(btnAckCircuit, LV_ALIGN_BOTTOM_MID, 0, -4);
+  lv_obj_add_style(btnAckCircuit, &styleNeonBtn, 0);
+  lv_obj_add_event_cb(btnAckCircuit, btn_ack_cb, LV_EVENT_CLICKED, NULL);
+
+  lv_obj_t* lblAck = lv_label_create(btnAckCircuit);
+  lv_label_set_text(lblAck, "[ RESET / ACKNOWLEDGE CIRCUIT BREAKER ]");
+  lv_obj_center(lblAck);
+}
+
+void CyberUI::buildNodeTab(lv_obj_t* parent) {
+  // CPU Bar
+  lv_obj_t* lblCpu = lv_label_create(parent);
+  lv_label_set_text(lblCpu, "CPU LOAD:");
+  lv_obj_set_style_text_color(lblCpu, CYBER_COLOR_CYAN, 0);
+  lv_obj_align(lblCpu, LV_ALIGN_TOP_LEFT, 8, 8);
+
+  barCpu = lv_bar_create(parent);
+  lv_obj_set_size(barCpu, 190, 10);
+  lv_obj_align(barCpu, LV_ALIGN_TOP_LEFT, 78, 12);
+  lv_obj_set_style_bg_color(barCpu, CYBER_COLOR_PANEL_ALT, 0);
+  lv_obj_set_style_bg_color(barCpu, CYBER_COLOR_CYAN, LV_PART_INDICATOR);
+
+  labelCpuVal = lv_label_create(parent);
+  lv_label_set_text(labelCpuVal, "0.0%");
+  lv_obj_set_style_text_color(labelCpuVal, CYBER_COLOR_TEXT_BRIGHT, 0);
+  lv_obj_align(labelCpuVal, LV_ALIGN_TOP_RIGHT, -8, 8);
+
+  // RAM Bar
+  lv_obj_t* lblRam = lv_label_create(parent);
+  lv_label_set_text(lblRam, "RAM LOAD:");
+  lv_obj_set_style_text_color(lblRam, CYBER_COLOR_CYAN, 0);
+  lv_obj_align(lblRam, LV_ALIGN_TOP_LEFT, 8, 28);
+
+  barRam = lv_bar_create(parent);
+  lv_obj_set_size(barRam, 190, 10);
+  lv_obj_align(barRam, LV_ALIGN_TOP_LEFT, 78, 32);
+  lv_obj_set_style_bg_color(barRam, CYBER_COLOR_PANEL_ALT, 0);
+  lv_obj_set_style_bg_color(barRam, CYBER_COLOR_AMBER, LV_PART_INDICATOR);
+
+  labelRamVal = lv_label_create(parent);
+  lv_label_set_text(labelRamVal, "0.0%");
+  lv_obj_set_style_text_color(labelRamVal, CYBER_COLOR_TEXT_BRIGHT, 0);
+  lv_obj_align(labelRamVal, LV_ALIGN_TOP_RIGHT, -8, 28);
+
+  // Disk Bar
+  lv_obj_t* lblDisk = lv_label_create(parent);
+  lv_label_set_text(lblDisk, "DISK SSD:");
+  lv_obj_set_style_text_color(lblDisk, CYBER_COLOR_CYAN, 0);
+  lv_obj_align(lblDisk, LV_ALIGN_TOP_LEFT, 8, 48);
+
+  barDisk = lv_bar_create(parent);
+  lv_obj_set_size(barDisk, 190, 10);
+  lv_obj_align(barDisk, LV_ALIGN_TOP_LEFT, 78, 52);
+  lv_obj_set_style_bg_color(barDisk, CYBER_COLOR_PANEL_ALT, 0);
+  lv_obj_set_style_bg_color(barDisk, CYBER_COLOR_GREEN, LV_PART_INDICATOR);
+
+  labelDiskVal = lv_label_create(parent);
+  lv_label_set_text(labelDiskVal, "0.0%");
+  lv_obj_set_style_text_color(labelDiskVal, CYBER_COLOR_TEXT_BRIGHT, 0);
+  lv_obj_align(labelDiskVal, LV_ALIGN_TOP_RIGHT, -8, 48);
+
+  // Daemons Matrix Frame
+  lv_obj_t* srvCard = lv_obj_create(parent);
+  lv_obj_set_size(srvCard, 298, 64);
+  lv_obj_align(srvCard, LV_ALIGN_BOTTOM_MID, 0, -4);
+  lv_obj_add_style(srvCard, &stylePanel, 0);
+  lv_obj_clear_flag(srvCard, LV_OBJ_FLAG_SCROLLABLE);
+
+  labelPollerVal = lv_label_create(srvCard);
+  lv_label_set_text(labelPollerVal, "POLLER: CHECKING...");
+  lv_obj_set_style_text_color(labelPollerVal, CYBER_COLOR_TEXT_DIM, 0);
+  lv_obj_align(labelPollerVal, LV_ALIGN_TOP_LEFT, 4, 2);
+
+  labelOllamaVal = lv_label_create(srvCard);
+  lv_label_set_text(labelOllamaVal, "OLLAMA: CHECKING...");
+  lv_obj_set_style_text_color(labelOllamaVal, CYBER_COLOR_TEXT_DIM, 0);
+  lv_obj_align(labelOllamaVal, LV_ALIGN_TOP_RIGHT, -4, 2);
+
+  labelLoadVal = lv_label_create(srvCard);
+  lv_label_set_text(labelLoadVal, "LOAD 1M: 0.00");
+  lv_obj_set_style_text_color(labelLoadVal, CYBER_COLOR_AMBER, 0);
+  lv_obj_align(labelLoadVal, LV_ALIGN_BOTTOM_LEFT, 4, -2);
+
+  labelUptimeVal = lv_label_create(srvCard);
+  lv_label_set_text(labelUptimeVal, "UP: 0h 00m");
+  lv_obj_set_style_text_color(labelUptimeVal, CYBER_COLOR_CYAN, 0);
+  lv_obj_align(labelUptimeVal, LV_ALIGN_BOTTOM_RIGHT, -4, -2);
+}
+
+void CyberUI::buildDeckTab(lv_obj_t* parent) {
+  // Brightness Slider
+  lv_obj_t* lblBright = lv_label_create(parent);
+  lv_label_set_text(lblBright, "TFT BACKLIGHT LEVEL:");
+  lv_obj_set_style_text_color(lblBright, CYBER_COLOR_CYAN, 0);
+  lv_obj_align(lblBright, LV_ALIGN_TOP_LEFT, 12, 10);
+
+  sliderBrightness = lv_slider_create(parent);
+  lv_slider_set_range(sliderBrightness, 10, 100);
+  lv_slider_set_value(sliderBrightness, 80, LV_ANIM_OFF);
+  lv_obj_set_size(sliderBrightness, 180, 12);
+  lv_obj_align(sliderBrightness, LV_ALIGN_TOP_LEFT, 12, 30);
+  lv_obj_set_style_bg_color(sliderBrightness, CYBER_COLOR_PANEL_ALT, 0);
+  lv_obj_set_style_bg_color(sliderBrightness, CYBER_COLOR_CYAN, LV_PART_INDICATOR);
+  lv_obj_set_style_bg_color(sliderBrightness, CYBER_COLOR_CYAN, LV_PART_KNOB);
+  lv_obj_add_event_cb(sliderBrightness, slider_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
+
+  labelBrightnessVal = lv_label_create(parent);
+  lv_label_set_text(labelBrightnessVal, "80%");
+  lv_obj_set_style_text_color(labelBrightnessVal, CYBER_COLOR_TEXT_BRIGHT, 0);
+  lv_obj_align(labelBrightnessVal, LV_ALIGN_TOP_LEFT, 204, 28);
+
+  // Audio Mute Switch
+  lv_obj_t* lblAud = lv_label_create(parent);
+  lv_label_set_text(lblAud, "AUDIO CHIRPS:");
+  lv_obj_set_style_text_color(lblAud, CYBER_COLOR_CYAN, 0);
+  lv_obj_align(lblAud, LV_ALIGN_TOP_LEFT, 12, 56);
+
+  swAudio = lv_switch_create(parent);
+  lv_obj_align(swAudio, LV_ALIGN_TOP_LEFT, 130, 52);
+  lv_obj_add_state(swAudio, LV_STATE_CHECKED);
+  lv_obj_add_event_cb(swAudio, sw_audio_cb, LV_EVENT_VALUE_CHANGED, NULL);
+
+  // Ambient LDR light sensor telemetry
+  labelLdrVal = lv_label_create(parent);
+  lv_label_set_text(labelLdrVal, "LDR SENSOR: 0");
+  lv_obj_set_style_text_color(labelLdrVal, CYBER_COLOR_TEXT_DIM, 0);
+  lv_obj_align(labelLdrVal, LV_ALIGN_TOP_LEFT, 12, 82);
+
+  // Manual HTTP Poll Button
+  lv_obj_t* btnPoll = lv_btn_create(parent);
+  lv_obj_set_size(btnPoll, 296, 32);
+  lv_obj_align(btnPoll, LV_ALIGN_BOTTOM_MID, 0, -6);
+  lv_obj_add_style(btnPoll, &styleNeonBtn, 0);
+  lv_obj_add_event_cb(btnPoll, btn_poll_cb, LV_EVENT_CLICKED, NULL);
+
+  lv_obj_t* lblPoll = lv_label_create(btnPoll);
+  lv_label_set_text(lblPoll, "[ RE-POLL K-2SO TELEMETRY NOW ]");
+  lv_obj_center(lblPoll);
+}
+
+void CyberUI::drawSpriteOnCanvas(int stage, int scale) {
+  // Clear canvas buffer to dark slate
+  lv_canvas_fill_bg(petCanvas, CYBER_COLOR_PANEL, LV_OPA_COVER);
+
+  const uint8_t* bmpData = ep_ai_slime;
+  lv_color_t fgColor = CYBER_COLOR_GREEN;
+
+  switch (stage) {
+    case 0:
+      bmpData = ep_ai_slime;
+      fgColor = CYBER_COLOR_GREEN;
+      break;
+    case 1:
+      bmpData = ep_ai_phantom;
+      fgColor = CYBER_COLOR_CYAN;
+      break;
+    case 2:
+      bmpData = ep_ai_daemon;
+      fgColor = CYBER_COLOR_AMBER;
+      break;
+    default:
+      bmpData = ep_ai_tomb;
+      fgColor = CYBER_COLOR_RED;
+      break;
+  }
+
+  // Draw 24x24 bitmap scaled by 3 into 72x72 canvas
+  for (int r = 0; r < 24; r++) {
+    for (int c = 0; c < 24; c++) {
+      int byteIdx = r * 3 + (c >> 3);
+      uint8_t b = pgm_read_byte(&bmpData[byteIdx]);
+      if ((b >> (c & 7)) & 1) {
+        for (int dy = 0; dy < scale; dy++) {
+          for (int dx = 0; dx < scale; dx++) {
+            lv_canvas_set_px(petCanvas, c * scale + dx, r * scale + dy, fgColor, LV_OPA_COVER);
+          }
+        }
+      }
+    }
+  }
+}
+
+void CyberUI::init() {
+  currentStage = -1;
+  animOffset = 0;
+  canvasBuffer = nullptr;
+  createStyles();
+  createHeader();
+  createTabview();
+  drawSpriteOnCanvas(3); // Start as 404 Tombstone until polled
+}
+
+void CyberUI::update(const DigiviceTelemetry& data) {
+  // 1. Update Header
+  if (data.serverOnline) {
+    lv_label_set_text(headerLabelHost, "[*] K-2SO: ONLINE");
+    lv_obj_set_style_text_color(headerLabelHost, CYBER_COLOR_GREEN, 0);
+  } else {
+    lv_label_set_text(headerLabelHost, "[!] K-2SO: 404 OFFLINE");
+    lv_obj_set_style_text_color(headerLabelHost, CYBER_COLOR_RED, 0);
+  }
+
+  char buf[32];
+  snprintf(buf, sizeof(buf), "WIFI: %ddBm", data.wifiRssi);
+  lv_label_set_text(headerLabelWifi, buf);
+
+  // 2. Stage calculation
+  int newStage = 3; // Offline
+  if (data.serverOnline) {
+    if (data.cpu < 30.0f) newStage = 0;
+    else if (data.cpu < 70.0f) newStage = 1;
+    else newStage = 2;
+  }
+
+  if (newStage != currentStage) {
+    currentStage = newStage;
+    drawSpriteOnCanvas(currentStage);
+    switch (currentStage) {
+      case 0:
+        lv_label_set_text(petStageLabel, "AI: BIT-SLIME (IDLE)");
+        lv_obj_set_style_text_color(petStageLabel, CYBER_COLOR_GREEN, 0);
+        break;
+      case 1:
+        lv_label_set_text(petStageLabel, "AI: PHANTOM-NODE");
+        lv_obj_set_style_text_color(petStageLabel, CYBER_COLOR_CYAN, 0);
+        break;
+      case 2:
+        lv_label_set_text(petStageLabel, "AI: DAEMON-CORE (HOT)");
+        lv_obj_set_style_text_color(petStageLabel, CYBER_COLOR_AMBER, 0);
+        break;
+      default:
+        lv_label_set_text(petStageLabel, "AI: 404 TOMBSTONE");
+        lv_obj_set_style_text_color(petStageLabel, CYBER_COLOR_RED, 0);
+        break;
+    }
+  }
+
+  // Pet Energy
+  lv_bar_set_value(petEnergyBar, (int)data.cpu, LV_ANIM_ON);
+  snprintf(buf, sizeof(buf), "%.1f%%", data.cpu);
+  lv_label_set_text(petEnergyVal, buf);
+
+  if (data.circuitBreakerTripped) {
+    lv_label_set_text(petStatusLabel, "STATUS: CIRCUIT BREAKER!");
+    lv_obj_set_style_text_color(petStatusLabel, CYBER_COLOR_RED, 0);
+  } else if (data.missionActive) {
+    lv_label_set_text(petStatusLabel, "STATUS: MISSION ACTIVE");
+    lv_obj_set_style_text_color(petStatusLabel, CYBER_COLOR_CYAN, 0);
+  } else {
+    lv_label_set_text(petStatusLabel, data.serverOnline ? "STATUS: COGNITIVE IDLE" : "STATUS: UNREACHABLE");
+    lv_obj_set_style_text_color(petStatusLabel, CYBER_COLOR_TEXT_DIM, 0);
+  }
+
+  // 3. Tactical Tab
+  if (data.missionActive) {
+    snprintf(buf, sizeof(buf), "[ MISSION: #%d (%s) ]", data.missionTicketId, data.missionProtocol.c_str());
+    lv_label_set_text(tacMissionLabel, buf);
+    lv_obj_set_style_text_color(tacMissionLabel, CYBER_COLOR_GREEN, 0);
+  } else {
+    lv_label_set_text(tacMissionLabel, "[ MISSION: STANDBY ]");
+    lv_obj_set_style_text_color(tacMissionLabel, CYBER_COLOR_CYAN, 0);
+  }
+
+  snprintf(buf, sizeof(buf), "STAGE: %s | ATTEMPT: %d", data.missionStage.c_str(), data.missionAttempt);
+  lv_label_set_text(tacStageLabel, buf);
+
+  int mins = (int)data.elapsedSec / 60;
+  int secs = (int)data.elapsedSec % 60;
+  snprintf(buf, sizeof(buf), "TIME: %02d:%02d", mins, secs);
+  lv_label_set_text(tacTimerLabel, buf);
+
+  // Gate styles
+  auto updateGateCard = [](lv_obj_t* card, lv_obj_t* label, const char* name, const String& val, lv_style_t* stPass, lv_style_t* stFail, lv_style_t* stIdle) {
+    char gbuf[32];
+    snprintf(gbuf, sizeof(gbuf), "%s: [%s]", name, val.c_str());
+    lv_label_set_text(label, gbuf);
+    if (val.equalsIgnoreCase("PASS") || val.equalsIgnoreCase("CLEAR") || val.equalsIgnoreCase("TRUE")) {
+      lv_obj_add_style(card, stPass, 0);
+    } else if (val.equalsIgnoreCase("FAIL") || val.equalsIgnoreCase("TRIPPED")) {
+      lv_obj_add_style(card, stFail, 0);
+    } else {
+      lv_obj_add_style(card, stIdle, 0);
+    }
+  };
+
+  updateGateCard(gateCard0, gateLabel0, "G0 INTEGRITY", data.gate0, &styleGatePassed, &styleGateFailed, &styleGateIdle);
+  updateGateCard(gateCard1, gateLabel1, "G1 LINTERS  ", data.gate1, &styleGatePassed, &styleGateFailed, &styleGateIdle);
+  updateGateCard(gateCard2, gateLabel2, "G2 ASSERTION", data.gate2, &styleGatePassed, &styleGateFailed, &styleGateIdle);
+  updateGateCard(gateCard3, gateLabel3, "G3 CIRCUIT  ", data.circuitBreakerTripped ? "TRIPPED" : "CLEAR", &styleGatePassed, &styleGateFailed, &styleGateIdle);
+
+  // 4. Node Vitals Tab
+  lv_bar_set_value(barCpu, (int)data.cpu, LV_ANIM_ON);
+  snprintf(buf, sizeof(buf), "%.1f%%", data.cpu);
+  lv_label_set_text(labelCpuVal, buf);
+
+  lv_bar_set_value(barRam, (int)data.ram, LV_ANIM_ON);
+  snprintf(buf, sizeof(buf), "%.1f%%", data.ram);
+  lv_label_set_text(labelRamVal, buf);
+
+  lv_bar_set_value(barDisk, (int)data.disk, LV_ANIM_ON);
+  snprintf(buf, sizeof(buf), "%.1f%%", data.disk);
+  lv_label_set_text(labelDiskVal, buf);
+
+  snprintf(buf, sizeof(buf), "POLLER: %s", data.pollerState.c_str());
+  lv_label_set_text(labelPollerVal, buf);
+  lv_obj_set_style_text_color(labelPollerVal, data.pollerState == "active" ? CYBER_COLOR_GREEN : CYBER_COLOR_RED, 0);
+
+  snprintf(buf, sizeof(buf), "OLLAMA: %s", data.ollamaState.c_str());
+  lv_label_set_text(labelOllamaVal, buf);
+  lv_obj_set_style_text_color(labelOllamaVal, data.ollamaState == "active" ? CYBER_COLOR_CYAN : CYBER_COLOR_AMBER, 0);
+
+  snprintf(buf, sizeof(buf), "LOAD 1M: %.2f", data.load1m);
+  lv_label_set_text(labelLoadVal, buf);
+
+  int upH = data.uptimeSec / 3600;
+  int upM = (data.uptimeSec % 3600) / 60;
+  snprintf(buf, sizeof(buf), "UP: %dh %02dm", upH, upM);
+  lv_label_set_text(labelUptimeVal, buf);
+
+  // 5. Deck Tab
+  snprintf(buf, sizeof(buf), "LDR SENSOR: %d", data.ldrValue);
+  lv_label_set_text(labelLdrVal, buf);
+}

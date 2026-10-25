@@ -1,0 +1,36 @@
+# Prerequisites
+*.d
+*.o
+*.a
+*.elf
+*.bin
+*.hex
+*.map
+
+# IDEs and Editors
+.vscode/
+.idea/
+.theia/
+*.swp
+*.swo
+*~
+
+# PlatformIO
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# Arduino IDE
+build/
+output/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# OS
+.DS_Store
+Thumbs.db
