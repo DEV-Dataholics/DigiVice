@@ -48,6 +48,7 @@ bool forcePollNow = false;
 // Audio & Stage Evolution Tracking
 int prevStage = -1;
 bool prevMissionActive = false;
+int prevTicketId = 0;
 bool prevCircuitBreaker = false;
 
 // ============================================================================
@@ -152,6 +153,7 @@ static void drawGfxSpriteScaled(int stage, int frame, int ox, int oy, int scale,
     case 0: spriteMap = alt ? sprite_slime_f1   : sprite_slime_f0;   break;
     case 1: spriteMap = alt ? sprite_phantom_f1 : sprite_phantom_f0; break;
     case 2: spriteMap = alt ? sprite_daemon_f1  : sprite_daemon_f0;  break;
+    case 4: spriteMap = alt ? sprite_haro_f1    : sprite_haro_f0;    break;
     default: spriteMap = alt ? sprite_tomb_f1   : sprite_tomb_f0;    break;
   }
   for (int r = 0; r < 24; r++) {
@@ -247,6 +249,48 @@ void triggerGundamCutscene(uint8_t fxType, int fromS, int toS) {
       int curS = (t > 9 || (t % 2 == 0)) ? toS : fromS;
       int32_t flash = (t >= 6 && t <= 10 && (t % 2 == 1)) ? (int32_t)colWhite : -1;
       drawGfxSpriteScaled(curS, t % 2, 100, 56, 5, flash);
+    } else if (fxType == 2) {
+      // HARO INCOMING TICKET ALERT CUTSCENE ("TICKET IN! TICKET IN!")
+      gfx.fillScreen(gfx.color565(0x05, 0x13, 0x0E));
+      gfx.fillRect(0, 0, 320, 24, gfx.color565(0x0A, 0x2E, 0x1F));
+      gfx.fillRect(0, 216, 320, 24, gfx.color565(0x0A, 0x2E, 0x1F));
+      gfx.setTextColor((t % 2 == 0) ? colMint : colGold);
+      gfx.setCursor(10, 7);
+      gfx.print(">>> HARO COMMS: INCOMING TICKET ALERT! <<<");
+      gfx.setTextColor(colCyan);
+      gfx.setCursor(18, 223);
+      gfx.print("CATAPULT DECK READY // K-2SO SCRAMBLE");
+
+      // Bouncing HARO with flapping ear-wings (stage 4 = HARO)
+      int bounceY = (t % 4 == 1 || t % 4 == 2) ? 18 : 0;
+      int haroFrame = (bounceY > 0) ? 1 : 0;
+      drawGfxSpriteScaled(4, haroFrame, 10, 68 - bounceY, 4);
+
+      // Hologram Telemetry Box on Right
+      gfx.fillRect(114, 42, 194, 148, gfx.color565(0x0B, 0x22, 0x30));
+      gfx.drawRect(114, 42, 194, 148, (t % 2 == 0) ? colGreen : colCyan);
+
+      gfx.setTextColor(colMint);
+      gfx.setCursor(124, 56);
+      gfx.print((t % 2 == 0) ? "\"TICKET IN! TICKET IN!\"" : "\"SCRAMBLE! K-2SO GO!\"");
+
+      gfx.setTextColor(colGold);
+      gfx.setCursor(124, 86);
+      gfx.printf("TICKET: #%d (%s)", telemetry.missionTicketId, telemetry.missionFolio.c_str());
+
+      gfx.setTextColor(colCyan);
+      gfx.setCursor(124, 112);
+      gfx.printf("PROTOCOL: %s", telemetry.missionProtocol.c_str());
+
+      gfx.setTextColor(colWhite);
+      gfx.setCursor(124, 136);
+      gfx.print("GATES: G0 -> G1 -> G2");
+
+      gfx.fillRect(124, 156, 174, 22, gfx.color565(0x06, 0x33, 0x1A));
+      gfx.drawRect(124, 156, 174, 22, colGreen);
+      gfx.setTextColor(colGreen);
+      gfx.setCursor(132, 163);
+      gfx.print("STATUS: LAUNCHING NOW");
     } else {
       // RED ALERT / CIRCUIT BREAKER EMP
       gfx.fillRect(0, 0, 320, 24, colRed);
@@ -319,11 +363,13 @@ void pollK2soMetrics() {
       }
 
       // Check Acoustic & Full-Screen Cutscene Events
+      bool newTicketArrived = telemetry.missionActive && (!prevMissionActive || (telemetry.missionTicketId > 0 && telemetry.missionTicketId != prevTicketId));
       if (telemetry.circuitBreakerTripped && !prevCircuitBreaker) {
         soundFx.playCircuitBreakerAlert();
         triggerGundamCutscene(3, 2, 2);
-      } else if (telemetry.missionActive && !prevMissionActive) {
-        soundFx.playGatePass();
+      } else if (newTicketArrived) {
+        soundFx.playEvolutionArpeggio();
+        triggerGundamCutscene(2, prevStage, prevStage); // Full-Screen HARO Incoming Ticket Alert!
       }
 
       // Track Stage Evolutions & Fire Full-Screen Gundam Cutscenes
@@ -331,13 +377,14 @@ void pollK2soMetrics() {
       if (prevStage != -1 && curStage > prevStage) {
         soundFx.playEvolutionArpeggio();
         if (curStage == 2) {
-          triggerGundamCutscene(0, prevStage, curStage); // Full-Screen Twin Buster Laser!
+          triggerGundamCutscene(0, prevStage, curStage); // Full-Screen Exia Trans-Am Burst!
         } else {
           triggerGundamCutscene(1, prevStage, curStage); // Full-Screen G-Frame Evolution!
         }
       }
       prevStage = curStage;
       prevMissionActive = telemetry.missionActive;
+      prevTicketId = telemetry.missionTicketId;
       prevCircuitBreaker = telemetry.circuitBreakerTripped;
     } else {
       telemetry.serverOnline = false;

@@ -47,6 +47,9 @@
           <span class="text-xs text-[var(--muted-foreground)] font-mono">320x240 Overlay</span>
         </div>
         <div class="grid grid-cols-2 gap-1.5 text-xs">
+          <button id="btnFxHaro" class="col-span-2 px-2 py-1.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-400 font-mono font-semibold hover:bg-emerald-500/30 transition cursor-pointer">
+            🟢 HARO: INCOMING TICKET ALERT!
+          </button>
           <button id="btnFxTransAm" class="px-2 py-1.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/50 font-mono font-semibold hover:bg-rose-500/30 transition cursor-pointer">
             ☄️ TRANS-AM Burst
           </button>
@@ -371,6 +374,59 @@
           "........................",
           "........................",
           "........................"
+      // HARO: Iconic Gundam Spherical AI Companion (Closed Ears vs Flapping Open Ears)
+      HARO: [
+        [
+          "........................",
+          ".......1111111111.......",
+          ".....11444444444411.....",
+          "....1445544333333341....",
+          "...144554331111113331...",
+          "..14331111333333311111..",
+          "..14333333333333333321..",
+          ".1433311133333333111321.",
+          ".13331BBB13333331BBB121.",
+          ".13331B5B13333331B5B121.",
+          ".1333311133333333111321.",
+          ".1333333331111113333321.",
+          ".1233333311111111333321.",
+          "..12333333333333333321..",
+          "..12233333333333333221..",
+          "...122233333333332221...",
+          "....1122222222222211....",
+          "......111111111111......",
+          "........................",
+          "........................",
+          "........................",
+          "........................",
+          "........................",
+          "........................"
+        ],
+        [
+          ".1111..............1111.",
+          "1444411..........1144441",
+          "145544411111111114444321",
+          ".1433111444444441113321.",
+          "..111.1445544333341.111.",
+          ".....143333333333321....",
+          "....14333111331113321...",
+          "....13331B5B11B5B1321...",
+          "....13331BBB11BBB1321...",
+          "....13333111331113321...",
+          "....13333311111133321...",
+          "....123331BBBBBB13321...",
+          ".....123331111113321....",
+          "......1223333333221.....",
+          ".......11222222211......",
+          ".........1111111........",
+          "........................",
+          "........................",
+          "........................",
+          "........................",
+          "........................",
+          "........................",
+          "........................",
+          "........................"
         ]
       ]
     };
@@ -637,6 +693,81 @@
         const flashWhite = (t >= 8 && t <= 14 && t % 2 === 1);
         drawScaledSprite(curS, t % 2, 100, 56, 5, flashWhite ? '#FFFFFF' : null);
 
+      } else if (state.fxType === 'HARO') {
+        // =====================================================================
+        // CUTSCENE 0: HARO INCOMING TICKET ALERT ("TICKET IN! TICKET IN!")
+        // =====================================================================
+        ctx.fillStyle = '#05130E';
+        ctx.fillRect(0, 0, 320, 240);
+
+        // Tactical radar grid lines
+        ctx.strokeStyle = '#0B2E22';
+        ctx.lineWidth = 1;
+        for (let gx = 0; gx < 320; gx += 20) {
+          ctx.beginPath(); ctx.moveTo(gx, 24); ctx.lineTo(gx, 216); ctx.stroke();
+        }
+        for (let gy = 24; gy < 216; gy += 20) {
+          ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(320, gy); ctx.stroke();
+        }
+
+        // Top & Bottom Caution / Comms Bars
+        ctx.fillStyle = '#0A2E1F';
+        ctx.fillRect(0, 0, 320, 24);
+        ctx.fillRect(0, 216, 320, 24);
+        ctx.fillStyle = '#00FF88';
+        ctx.fillRect(0, 23, 320, 2);
+        ctx.fillRect(0, 215, 320, 2);
+
+        ctx.font = 'bold 11px monospace';
+        ctx.fillStyle = (t % 2 === 0) ? '#66FFBB' : '#FFDD00';
+        ctx.fillText('>>> HARO COMMS: INCOMING TICKET ALERT! <<<', 14, 16);
+        ctx.fillStyle = '#00F0FF';
+        ctx.fillText('CATAPULT DECK READY // K-2SO SCRAMBLE', 28, 232);
+
+        // Bouncing HARO with flapping ear-wings!
+        const bounceY = Math.round(Math.abs(Math.sin(t * 0.65)) * 22);
+        const haroFrame = (bounceY > 10) ? 1 : (t % 2);
+        const haroY = 66 - bounceY;
+
+        // Shadow under Haro
+        ctx.fillStyle = '#005533';
+        ctx.fillRect(28 + Math.round(bounceY / 2), 165, 64 - bounceY, 6);
+
+        // Draw 5x Scaled Haro on Left
+        drawScaledSprite('HARO', haroFrame, 12, haroY, 4);
+
+        // Haro Speech / Telemetry Alert Hologram Box on Right
+        ctx.fillStyle = '#0B2230';
+        ctx.fillRect(114, 42, 194, 148);
+        ctx.strokeStyle = (t % 2 === 0) ? '#00FF88' : '#00F0FF';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(114, 42, 194, 148);
+
+        ctx.font = 'bold 12px monospace';
+        ctx.fillStyle = '#66FFBB';
+        ctx.fillText((t % 2 === 0) ? '"TICKET IN! TICKET IN!"' : '"SCRAMBLE! K-2SO GO!"', 124, 66);
+
+        ctx.fillStyle = '#1B384A';
+        ctx.fillRect(124, 76, 174, 2);
+
+        ctx.font = 'bold 13px monospace';
+        ctx.fillStyle = '#FFDD00';
+        ctx.fillText('TICKET: #308 (TK-308)', 124, 100);
+
+        ctx.font = '11px monospace';
+        ctx.fillStyle = '#00F0FF';
+        ctx.fillText('PROTOCOL: ANDOR_INVERTED', 124, 122);
+        ctx.fillStyle = '#F0F6FC';
+        ctx.fillText('GATES:    G0 -> G1 -> G2', 124, 142);
+
+        ctx.fillStyle = '#06331A';
+        ctx.fillRect(124, 156, 174, 22);
+        ctx.strokeStyle = '#00FF88';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(124, 156, 174, 22);
+        ctx.fillStyle = '#00FF88';
+        ctx.fillText('STATUS:   LAUNCHING NOW', 132, 171);
+
       } else if (state.fxType === 'EMP') {
         const flash = (t % 2 === 0);
         ctx.fillStyle = flash ? '#550518' : '#1F030A';
@@ -727,6 +858,12 @@
         ctx.strokeRect(6.5, 32.5, 89, 93);
 
         drawPetSanctuary(15, 41);
+
+        if (state.missionActive) {
+          // Draw Mini-Haro Companion bouncing in top-right of AI-PET tab when ticket is active!
+          const hb = (state.animOffset % 2) * 3;
+          drawScaledSprite('HARO', state.animOffset % 2, 266, 26 - hb, 2);
+        }
 
         const stageNames = ['AI: PROTO-GUNDAM', 'AI: RX-CYBER GUNDAM', 'AI: EXIA [TRANS-AM]', 'AI: 404 UNIT WRECK'];
         const stageCols  = ['#00FF88', '#00F0FF', '#FF2A55', '#FF2A55'];
@@ -994,6 +1131,11 @@
     }
 
     // FX Buttons
+    document.getElementById('btnFxHaro').onclick = () => {
+      state.missionActive = true;
+      document.getElementById('chkMission').checked = true;
+      triggerFullScreenFx('HARO', state.stage, state.stage);
+    };
     document.getElementById('btnFxTransAm').onclick = () => {
       setStage(2, false);
       triggerFullScreenFx('TRANSAM', 1, 2);
@@ -1028,7 +1170,7 @@
 
     document.getElementById('chkMission').onchange = e => {
       state.missionActive = e.target.checked;
-      if (state.missionActive) triggerFullScreenFx('LASER');
+      if (state.missionActive) triggerFullScreenFx('HARO');
       renderTftScreen();
     };
 
