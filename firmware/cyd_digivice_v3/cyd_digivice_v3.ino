@@ -291,6 +291,88 @@ void triggerGundamCutscene(uint8_t fxType, int fromS, int toS) {
       gfx.setTextColor(colGreen);
       gfx.setCursor(132, 163);
       gfx.print("STATUS: LAUNCHING NOW");
+    } else if (fxType == 4) {
+      // OPTION B: CELESTIAL BEING SPLIT-EMBLEM REVEAL (DATAHOLICS DARK EDITORIAL BOOT)
+      uint16_t colDark   = gfx.color565(0x07, 0x09, 0x0E);
+      uint16_t colOrange = gfx.color565(0xFF, 0x73, 0x00);
+      uint16_t colHair   = gfx.color565(0x1E, 0x26, 0x36);
+      uint16_t colDim    = gfx.color565(0x73, 0x8A, 0x9C);
+
+      gfx.fillScreen(colDark);
+
+      // Architectural Blueprint Hairlines
+      gfx.drawFastHLine(0, 26, 320, colHair);
+      gfx.drawFastHLine(0, 206, 320, colHair);
+      gfx.drawFastVLine(160, 0, 26, colHair);
+
+      gfx.setTextSize(1);
+      gfx.setTextColor(colDim);
+      gfx.setCursor(10, 9);
+      gfx.print("[01] SOVEREIGN ARCHITECTURE");
+      gfx.setTextColor(colOrange);
+      gfx.setCursor(224, 9);
+      gfx.print("BOOT // SEQ-00");
+
+      // Exact Vector Dataholics Split-Wing Emblem (Centered at 160, 72)
+      int slide = (t < 6) ? (6 - t) * 7 : 0;
+      int cx = 160;
+      int cy = 72;
+
+      // Left Orange Wing Polygon (Slanted Top & Bottom)
+      int lxOuter = cx - 46 - slide;
+      int lxInner = cx - 6 - slide;
+      gfx.fillTriangle(lxOuter, cy - 23, lxInner, cy - 30, lxInner, cy + 30, colOrange);
+      gfx.fillTriangle(lxOuter, cy - 23, lxInner, cy + 30, lxOuter, cy + 23, colOrange);
+
+      // Right Orange Wing Polygon (Slanted Top & Bottom)
+      int rxInner = cx + 6 + slide;
+      int rxOuter = cx + 46 + slide;
+      gfx.fillTriangle(rxInner, cy - 30, rxOuter, cy - 23, rxOuter, cy + 23, colOrange);
+      gfx.fillTriangle(rxInner, cy - 30, rxOuter, cy + 23, rxInner, cy + 30, colOrange);
+
+      // Negative-Space Inner Circles & Horizontal Bridge Cutout
+      gfx.fillCircle(cx - 25 - slide, cy, 13, colDark);
+      gfx.fillCircle(cx + 25 + slide, cy, 13, colDark);
+      gfx.fillRect(cx - 25 - slide, cy - 5, 50 + slide * 2, 10, colDark);
+
+      // Scanline Sweep during early ticks
+      if (t <= 9) {
+        gfx.fillRect(104, 42 + t * 6, 112, 2, colGold);
+      }
+
+      // Editorial Typography Stack
+      if (t >= 3) {
+        gfx.setTextSize(2);
+        gfx.setTextColor(colWhite);
+        gfx.setCursor(52, 118);
+        gfx.print("D A T A H O L I C S");
+
+        gfx.setTextSize(1);
+        gfx.setTextColor(colCyan);
+        gfx.setCursor(44, 146);
+        gfx.print("[ TiRA SYSTEM // SOVEREIGN AI ENGINE ]");
+      }
+
+      // Executive Owner Credential Pill
+      if (t >= 6) {
+        gfx.fillRect(46, 164, 228, 24, gfx.color565(0x0E, 0x15, 0x24));
+        gfx.drawRect(46, 164, 228, 24, colOrange);
+        gfx.setTextColor(colGold);
+        gfx.setCursor(102, 172);
+        gfx.print("LUIS MORALES DEVICE");
+      }
+
+      // Bottom Corner Signature & CTO Clearance
+      gfx.setTextColor(colGold);
+      gfx.setCursor(10, 216);
+      gfx.print("LUIS MORALES // MY CTO");
+      gfx.setTextColor(colGreen);
+      gfx.setCursor(184, 216);
+      gfx.print("[ CLEARANCE: LEVEL 0 ]");
+
+      // Bottom Edge Sweeping Orange Progress Hairline (0..320px)
+      int progW = min(320, (t + 1) * 18);
+      gfx.fillRect(0, 237, progW, 3, colOrange);
     } else {
       // RED ALERT / CIRCUIT BREAKER EMP
       gfx.fillRect(0, 0, 320, 24, colRed);
@@ -305,7 +387,9 @@ void triggerGundamCutscene(uint8_t fxType, int fromS, int toS) {
   gfx.endWrite();
 
   // Force LVGL to repaint the full 320x240 HUD after the cutscene completes
-  lv_obj_invalidate(lv_screen_active());
+  if (lv_screen_active()) {
+    lv_obj_invalidate(lv_screen_active());
+  }
 }
 
 // ============================================================================
@@ -455,6 +539,10 @@ void setup() {
 
   // Quick boot pattern to clear any old vendor display data
   gfx.fillScreen(TFT_BLACK);
+
+  // Play Option B: Dataholics // TiRA System // Luis Morales Device Boot Sequence
+  soundFx.playEvolutionArpeggio();
+  triggerGundamCutscene(4, 0, 0);
 
   // 4. Setup LVGL (v9.x)
   lv_init();

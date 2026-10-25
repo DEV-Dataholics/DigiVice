@@ -66,8 +66,8 @@ static void btn_haro_cb(lv_event_t * e) {
 }
 
 static void btn_evo_cb(lv_event_t * e) {
-  soundFx.playChirp();
-  triggerGundamCutscene(1, 0, 1);
+  soundFx.playEvolutionArpeggio();
+  triggerGundamCutscene(4, 0, 0); // Replay Dataholics Boot Screen!
 }
 
 void CyberUI::setBacklightCallback(void (*cb)(int)) { onBacklightChange = cb; }
@@ -469,7 +469,7 @@ void CyberUI::buildDeckTab(lv_obj_t* parent) {
   lv_obj_add_style(btnEvo, &styleNeonBtn, 0);
   lv_obj_add_event_cb(btnEvo, btn_evo_cb, LV_EVENT_CLICKED, NULL);
   lv_obj_t* l3 = lv_label_create(btnEvo);
-  lv_label_set_text(l3, "[G-EVOLVE]");
+  lv_label_set_text(l3, "[BOOT LOGO]");
   lv_obj_center(l3);
 
   // Brightness Slider

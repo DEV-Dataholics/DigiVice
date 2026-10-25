@@ -47,8 +47,11 @@
           <span class="text-xs text-[var(--muted-foreground)] font-mono">320x240 Overlay</span>
         </div>
         <div class="grid grid-cols-2 gap-1.5 text-xs">
-          <button id="btnFxHaro" class="col-span-2 px-2 py-1.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-400 font-mono font-semibold hover:bg-emerald-500/30 transition cursor-pointer">
-            🟢 HARO: INCOMING TICKET ALERT!
+          <button id="btnFxBoot" class="px-2 py-1.5 rounded bg-orange-500/20 text-orange-300 border border-orange-400 font-mono font-semibold hover:bg-orange-500/30 transition cursor-pointer">
+            🟠 DATAHOLICS BOOT
+          </button>
+          <button id="btnFxHaro" class="px-2 py-1.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-400 font-mono font-semibold hover:bg-emerald-500/30 transition cursor-pointer">
+            🟢 HARO TICKET IN!
           </button>
           <button id="btnFxTransAm" class="px-2 py-1.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/50 font-mono font-semibold hover:bg-rose-500/30 transition cursor-pointer">
             ☄️ TRANS-AM Burst
@@ -770,6 +773,107 @@
         ctx.fillStyle = '#00FF88';
         ctx.fillText('STATUS:   LAUNCHING NOW', 132, 171);
 
+      } else if (state.fxType === 'BOOT') {
+        // =====================================================================
+        // OPTION B: CELESTIAL BEING SPLIT-EMBLEM REVEAL (DARK EDITORIAL BOOT)
+        // =====================================================================
+        ctx.fillStyle = '#07090E';
+        ctx.fillRect(0, 0, 320, 240);
+
+        // Subtle Blueprint Editorial Hairline Grid
+        ctx.strokeStyle = 'rgba(241, 239, 233, 0.05)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, 28); ctx.lineTo(320, 28);
+        ctx.moveTo(0, 206); ctx.lineTo(320, 206);
+        ctx.moveTo(160, 0); ctx.lineTo(160, 28);
+        ctx.stroke();
+
+        // Top Minimal Editorial Metadata
+        ctx.font = '9px monospace';
+        ctx.fillStyle = '#738A9C';
+        ctx.fillText('[01] SOVEREIGN ARCHITECTURE', 12, 18);
+        ctx.fillStyle = '#FF7300';
+        ctx.fillText('BOOT // SEQ-00', 230, 18);
+
+        // Exact Vector Dataholics Split-Wing Emblem (Centered at 160, 74)
+        // Animates sliding inward during ticks 0..8
+        const slideOffset = Math.max(0, (8 - t) * 5);
+        const cx = 160;
+        const cy = 74;
+
+        ctx.save();
+        // Left Wing Polygon (Slanted Top/Bottom)
+        ctx.fillStyle = '#FF7300';
+        ctx.beginPath();
+        ctx.moveTo(cx - 46 - slideOffset, cy - 23);
+        ctx.lineTo(cx - 6 - slideOffset,  cy - 30);
+        ctx.lineTo(cx - 6 - slideOffset,  cy + 30);
+        ctx.lineTo(cx - 46 - slideOffset, cy + 23);
+        ctx.closePath();
+        ctx.fill();
+
+        // Right Wing Polygon (Slanted Top/Bottom)
+        ctx.beginPath();
+        ctx.moveTo(cx + 6 + slideOffset,  cy - 30);
+        ctx.lineTo(cx + 46 + slideOffset, cy - 23);
+        ctx.lineTo(cx + 46 + slideOffset, cy + 23);
+        ctx.lineTo(cx + 6 + slideOffset,  cy + 30);
+        ctx.closePath();
+        ctx.fill();
+
+        // Negative-Space Inner Circles & Horizontal Bridge Cutout
+        ctx.fillStyle = '#07090E';
+        ctx.beginPath();
+        ctx.arc(cx - 25 - slideOffset, cy, 13, 0, Math.PI * 2);
+        ctx.arc(cx + 25 + slideOffset, cy, 13, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillRect(cx - 25 - slideOffset, cy - 5, 50 + slideOffset * 2, 10);
+        ctx.restore();
+
+        // Scanline Laser Sweep Effect during early ticks
+        if (t <= 12) {
+          const scanY = 40 + t * 6;
+          ctx.fillStyle = 'rgba(255, 115, 0, 0.45)';
+          ctx.fillRect(100, scanY, 120, 2);
+        }
+
+        // Editorial Typography Stack (Reveals smoothly at t >= 5)
+        if (t >= 4) {
+          ctx.font = 'bold 20px sans-serif';
+          ctx.fillStyle = '#F0F6FC';
+          ctx.fillText('D A T A H O L I C S', 66, 134);
+
+          ctx.font = 'bold 11px monospace';
+          ctx.fillStyle = '#00F0FF';
+          ctx.fillText('[ TiRA SYSTEM // SOVEREIGN AI ENGINE ]', 34, 156);
+        }
+
+        // Executive Owner Signature & Bottom Corner Metadata (Reveals at t >= 9)
+        if (t >= 8) {
+          ctx.fillStyle = '#0E1524';
+          ctx.fillRect(44, 170, 232, 24);
+          ctx.strokeStyle = 'rgba(255, 115, 0, 0.6)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(44.5, 170.5, 231, 23);
+
+          ctx.font = 'bold 11px monospace';
+          ctx.fillStyle = '#FFDD00';
+          ctx.fillText('LUIS MORALES DEVICE', 96, 186);
+        }
+
+        // Bottom Editorial Bar: Left Signature & Right CTO Clearance
+        ctx.font = '9px monospace';
+        ctx.fillStyle = '#FFDD00';
+        ctx.fillText('LUIS MORALES // MY CTO', 12, 224);
+        ctx.fillStyle = '#00FF88';
+        ctx.fillText('[ CLEARANCE: LEVEL 0 ]', 188, 224);
+
+        // 2px Sweeping Orange Progress Hairline along the very bottom edge (0..320px)
+        const progW = Math.min(320, Math.round((t / 26) * 320));
+        ctx.fillStyle = '#FF7300';
+        ctx.fillRect(0, 237, progW, 3);
+
       } else if (state.fxType === 'EMP') {
         const flash = (t % 2 === 0);
         ctx.fillStyle = flash ? '#550518' : '#1F030A';
@@ -1300,6 +1404,9 @@
     }
 
     // FX Buttons
+    document.getElementById('btnFxBoot').onclick = () => {
+      triggerFullScreenFx('BOOT', state.stage, state.stage);
+    };
     document.getElementById('btnFxHaro').onclick = () => {
       state.missionActive = true;
       document.getElementById('chkMission').checked = true;
@@ -1397,6 +1504,7 @@
     }, 90);
 
     setStage(0, false);
+    triggerFullScreenFx('BOOT', 0, 0);
   </script>
 </body>
 </html>
