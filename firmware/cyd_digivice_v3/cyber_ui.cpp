@@ -520,19 +520,19 @@ void CyberUI::triggerEvolutionFanfare(int stage) {
   drawSpriteOnCanvas(currentStage);
   switch (currentStage) {
     case 0:
-      lv_label_set_text(petStageLabel, "AI: BIT-SLIME (IDLE)");
+      lv_label_set_text(petStageLabel, "AI: SKULL-SLIME");
       lv_obj_set_style_text_color(petStageLabel, CYBER_COLOR_GREEN, 0);
       break;
     case 1:
-      lv_label_set_text(petStageLabel, "AI: PHANTOM-NODE");
+      lv_label_set_text(petStageLabel, "AI: PROTO-GUNDAM");
       lv_obj_set_style_text_color(petStageLabel, CYBER_COLOR_CYAN, 0);
       break;
     case 2:
-      lv_label_set_text(petStageLabel, "AI: DAEMON-CORE (HOT)");
+      lv_label_set_text(petStageLabel, "AI: OMEGA RX-GUNDAM");
       lv_obj_set_style_text_color(petStageLabel, CYBER_COLOR_AMBER, 0);
       break;
     default:
-      lv_label_set_text(petStageLabel, "AI: 404 TOMBSTONE");
+      lv_label_set_text(petStageLabel, "AI: 404 UNIT WRECK");
       lv_obj_set_style_text_color(petStageLabel, CYBER_COLOR_RED, 0);
       break;
   }
