@@ -482,9 +482,10 @@ void setup() {
   cyberUI.setResetCircuitBreakerCallback(handleCircuitAck);
   cyberUI.setAudioToggleCallback(handleAudioToggle);
 
-  // 6. Connect Wi-Fi
+  // 6. Connect Wi-Fi & Configure Local NTP Clock (CST UTC-6)
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASS);
+  configTime(-6 * 3600, 0, "pool.ntp.org", "time.nist.gov");
   Serial.print(F("[WiFi] Connecting to: "));
   Serial.println(WIFI_SSID);
 

@@ -64,8 +64,14 @@ private:
   lv_obj_t* headerLabelWifi;
   lv_obj_t* headerLabelVitals;
 
-  // Tab 1: AI Pet
+  // Tab 1: Chrono + AI Pet Split-Runway
   lv_obj_t* petCanvas;
+  lv_obj_t* chronoDateLabel;
+  lv_obj_t* chronoTimeLabel;
+  lv_obj_t* chronoCpuBar;
+  lv_obj_t* chronoCpuVal;
+  lv_obj_t* chronoRamBar;
+  lv_obj_t* chronoRamVal;
   lv_obj_t* petStageLabel;
   lv_obj_t* petStatusLabel;
   lv_obj_t* petEnergyBar;

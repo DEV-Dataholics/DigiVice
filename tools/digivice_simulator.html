@@ -852,154 +852,305 @@
       ctx.fillStyle = '#738A9C';
       ctx.fillText(state.serverOnline ? 'WIFI: -52dBm' : 'WIFI: --', 232, 15);
 
-      if (state.activeTab === 0) {
-        ctx.fillStyle = '#131A29';
-        ctx.fillRect(6, 32, 90, 94);
-        ctx.strokeStyle = (state.stage === 2) ? '#FF2A55' : '#00F0FF';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(6.5, 32.5, 89, 93);
-
-        drawPetSanctuary(15, 41);
-
-        if (state.missionActive) {
-          // Draw Mini-Haro Companion bouncing in top-right of AI-PET tab when ticket is active!
-          const hb = (state.animOffset % 2) * 3;
-          drawScaledSprite('HARO', state.animOffset % 2, 266, 26 - hb, 2);
+      // Helper: Draw Segmented LED Power Bar
+      function drawSegmentedBar(bx, by, bw, bh, segments, percent, activeHex, highHex = null) {
+        const gap = 2;
+        const segW = Math.floor((bw - (segments - 1) * gap) / segments);
+        const activeCount = Math.round((percent / 100) * segments);
+        for (let s = 0; s < segments; s++) {
+          const sx = bx + s * (segW + gap);
+          if (s < activeCount) {
+            ctx.fillStyle = (highHex && s >= Math.floor(segments * 0.7)) ? highHex : activeHex;
+          } else {
+            ctx.fillStyle = '#162032';
+          }
+          ctx.fillRect(sx, by, segW, bh);
         }
-
-        const stageNames = ['AI: PROTO-GUNDAM', 'AI: RX-CYBER GUNDAM', 'AI: EXIA [TRANS-AM]', 'AI: 404 UNIT WRECK'];
-        const stageCols  = ['#00FF88', '#00F0FF', '#FF2A55', '#FF2A55'];
-        ctx.font = 'bold 12px monospace';
-        ctx.fillStyle = stageCols[state.stage];
-        ctx.fillText(stageNames[state.stage], 108, 46);
-
-        ctx.font = '11px monospace';
-        if (state.circuitBreaker) {
-          ctx.fillStyle = '#FF2A55';
-          ctx.fillText('STATUS: CIRCUIT BREAKER!', 108, 64);
-        } else if (state.stage === 2) {
-          ctx.fillStyle = '#66FFBB';
-          ctx.fillText('GN-DRIVE: TRANS-AM OVERDRIVE', 108, 64);
-        } else if (state.missionActive) {
-          ctx.fillStyle = '#00F0FF';
-          ctx.fillText('STATUS: MISSION ACTIVE', 108, 64);
-        } else {
-          ctx.fillStyle = '#738A9C';
-          ctx.fillText(state.serverOnline ? 'STATUS: COGNITIVE IDLE' : 'STATUS: UNREACHABLE', 108, 64);
-        }
-
-        ctx.fillStyle = '#FFB800';
-        ctx.fillText('AI COGNITIVE LOAD:', 108, 86);
-
-        ctx.fillStyle = '#1B2438';
-        ctx.fillRect(108, 94, 145, 10);
-        ctx.fillStyle = (state.cpu >= 70) ? '#FF2A55' : '#00F0FF';
-        ctx.fillRect(108, 94, Math.round(1.45 * state.cpu), 10);
-
-        ctx.fillStyle = '#F0F6FC';
-        ctx.fillText(state.cpu.toFixed(1) + '%', 260, 103);
-
-        ctx.fillStyle = '#131A29';
-        ctx.fillRect(6, 134, 308, 64);
-        ctx.strokeStyle = '#1B2438';
-        ctx.strokeRect(6.5, 134.5, 307, 63);
-
-        ctx.fillStyle = '#00F0FF';
-        ctx.fillText('CELESTIAL BEING // GUNDAM EVOLUTION DECK', 14, 150);
-        ctx.fillStyle = '#738A9C';
-        ctx.fillText(`POLLER: ${state.serverOnline ? 'active' : 'offline'}   |   OLLAMA: ${state.serverOnline ? 'active' : 'offline'}`, 14, 168);
-        ctx.fillStyle = '#00FF88';
-        ctx.fillText('[ TAP PET CARD FOR FULL-SCREEN TRANS-AM ]', 14, 186);
-
-      } else if (state.activeTab === 1) {
-        ctx.font = 'bold 12px monospace';
-        ctx.fillStyle = state.missionActive ? '#00FF88' : '#00F0FF';
-        ctx.fillText(state.missionActive ? '[ MISSION: #308 (ANDOR_INVERTED) ]' : '[ MISSION: STANDBY ]', 10, 44);
-
-        ctx.font = '11px monospace';
-        ctx.fillStyle = '#738A9C';
-        ctx.fillText(state.missionActive ? 'STAGE: GATE_2_ASSERTIONS | ATTEMPT: 1' : 'STAGE: IDLE | ATTEMPT: 0', 10, 62);
-        ctx.fillStyle = '#FFB800';
-        ctx.fillText(state.missionActive ? 'TIME: 00:48' : 'TIME: 00:00', 238, 62);
-
-        const gates = [
-          { x: 8,   y: 72, label: 'G0 INTEGRITY: [PASS]', pass: !state.circuitBreaker },
-          { x: 162, y: 72, label: 'G1 LINTERS:   [PASS]', pass: !state.circuitBreaker },
-          { x: 8,   y: 112, label: state.missionActive ? 'G2 ASSERTION: [RUN]' : 'G2 ASSERTION: [PASS]', pass: !state.circuitBreaker },
-          { x: 162, y: 112, label: state.circuitBreaker ? 'G3 CIRCUIT: [TRIPPED]' : 'G3 CIRCUIT:   [CLEAR]', pass: !state.circuitBreaker }
-        ];
-        gates.forEach(g => {
-          ctx.fillStyle = g.pass ? '#06331A' : '#3B0715';
-          ctx.fillRect(g.x, g.y, 148, 32);
-          ctx.strokeStyle = g.pass ? '#00FF88' : '#FF2A55';
-          ctx.strokeRect(g.x + 0.5, g.y + 0.5, 147, 31);
-          ctx.fillStyle = '#F0F6FC';
-          ctx.fillText(g.label, g.x + 8, g.y + 20);
-        });
-
-        ctx.fillStyle = '#0D2A3A';
-        ctx.fillRect(8, 156, 302, 34);
-        ctx.strokeStyle = '#00F0FF';
-        ctx.strokeRect(8.5, 156.5, 301, 33);
-        ctx.fillStyle = '#00F0FF';
-        ctx.fillText('[ ACK / RESET CIRCUIT BREAKER ]', 58, 177);
-
-      } else if (state.activeTab === 2) {
-        const bars = [
-          { label: 'CPU',  val: state.cpu,  col: '#00F0FF', y: 42 },
-          { label: 'RAM',  val: state.ram,  col: '#FFB800', y: 72 },
-          { label: 'DISK', val: state.disk, col: '#00FF88', y: 102 }
-        ];
-        ctx.font = 'bold 11px monospace';
-        bars.forEach(b => {
-          ctx.fillStyle = '#00F0FF';
-          ctx.fillText(b.label, 12, b.y + 10);
-          ctx.fillStyle = '#1B2438';
-          ctx.fillRect(58, b.y, 195, 12);
-          ctx.fillStyle = b.col;
-          ctx.fillRect(58, b.y, Math.round(1.95 * b.val), 12);
-          ctx.fillStyle = '#F0F6FC';
-          ctx.fillText(b.val.toFixed(1) + '%', 262, b.y + 10);
-        });
-
-        ctx.fillStyle = '#131A29';
-        ctx.fillRect(10, 132, 300, 62);
-        ctx.strokeStyle = '#1B2438';
-        ctx.strokeRect(10.5, 132.5, 299, 61);
-        ctx.fillStyle = '#00FF88';
-        ctx.fillText('POLLER: active', 20, 152);
-        ctx.fillStyle = '#00F0FF';
-        ctx.fillText('OLLAMA: active', 175, 152);
-        ctx.fillStyle = '#FFB800';
-        ctx.fillText('LOAD 1M: 1.42', 20, 178);
-        ctx.fillStyle = '#00F0FF';
-        ctx.fillText('UP: 14h 22m', 175, 178);
-
-      } else if (state.activeTab === 3) {
-        ctx.font = 'bold 11px monospace';
-        ctx.fillStyle = '#00F0FF';
-        ctx.fillText('TFT BACKLIGHT PWM:', 14, 48);
-        ctx.fillStyle = '#1B2438';
-        ctx.fillRect(14, 58, 230, 10);
-        ctx.fillStyle = '#00F0FF';
-        ctx.fillRect(14, 58, Math.round(2.3 * state.backlight), 10);
-        ctx.fillStyle = '#F0F6FC';
-        ctx.fillText(state.backlight + '%', 258, 67);
-
-        ctx.fillStyle = '#00F0FF';
-        ctx.fillText('CYBERSYNTH AUDIO (GPIO 26): [ENABLED]', 14, 102);
-        ctx.fillStyle = '#738A9C';
-        ctx.fillText('AMBIENT LDR SENSOR (GPIO 34): 342', 14, 128);
-
-        ctx.fillStyle = '#0D2A3A';
-        ctx.fillRect(14, 148, 292, 38);
-        ctx.strokeStyle = '#00F0FF';
-        ctx.strokeRect(14.5, 148.5, 291, 37);
-        ctx.fillStyle = '#00F0FF';
-        ctx.fillText('[ RE-POLL K-2SO TELEMETRY NOW ]', 54, 171);
       }
 
-      const tabs = ['[AI-PET]', '[GATES]', '[NODE]', '[DECK]'];
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+      const ss = String(now.getSeconds()).padStart(2, '0');
+      const colon = (state.animOffset % 2 === 0) ? ':' : ' ';
+      const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+      const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+      const dateStr = `${days[now.getDay()]} · ${months[now.getMonth()]} ${String(now.getDate()).padStart(2, '0')} // CST`;
+
+      if (state.activeTab === 0) {
+        // =====================================================================
+        // TAB 0: [CHRONO] — NEO-TOKYO ASYMMETRIC SPLIT-RUNWAY (CLOCK + PET + CPU/RAM)
+        // =====================================================================
+        // Left Hero Pod (Gundam Sanctuary + Stage Badge)
+        ctx.fillStyle = '#0D1320';
+        ctx.fillRect(6, 30, 92, 172);
+        const podBorder = (state.stage === 2) ? '#FF2A55' : ((state.stage === 1) ? '#00F0FF' : '#00FF88');
+        ctx.strokeStyle = podBorder;
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(6.5, 30.5, 91, 171);
+
+        // Top Pod Label
+        ctx.fillStyle = '#162238';
+        ctx.fillRect(7, 31, 90, 16);
+        ctx.font = 'bold 9px monospace';
+        ctx.fillStyle = podBorder;
+        ctx.fillText('G-HANGAR // 01', 13, 42);
+
+        drawPetSanctuary(16, 52);
+
+        // Stage Name Pill inside Pod bottom
+        const shortStage = ['PROTO-GUNDAM', 'RX-78 CYBER', 'EXIA TRANS-AM', '404 WRECK'];
+        ctx.fillStyle = (state.stage === 2) ? '#3B0715' : '#0A1E2E';
+        ctx.fillRect(11, 132, 82, 20);
+        ctx.strokeStyle = podBorder;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(11.5, 132.5, 81, 19);
+        ctx.font = 'bold 9px monospace';
+        ctx.fillStyle = '#F0F6FC';
+        ctx.fillText(shortStage[state.stage], 16, 145);
+
+        // Quick Action Hint inside Pod
+        ctx.fillStyle = '#738A9C';
+        ctx.font = '9px monospace';
+        ctx.fillText('TAP TO EVOLVE', 16, 168);
+        ctx.fillStyle = podBorder;
+        ctx.fillText(state.stage === 2 ? 'GN: 300% MAX' : 'GN: STABLE', 19, 184);
+
+        // Right Top: Editorial Chrono Card (Local Time + Date + Haro)
+        ctx.fillStyle = '#0E1626';
+        ctx.fillRect(104, 30, 210, 76);
+        ctx.strokeStyle = '#1E2D4A';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(104.5, 30.5, 209, 75);
+
+        // Top Accent Line on Clock Card
+        ctx.fillStyle = (state.stage === 2) ? '#FF007F' : '#00F0FF';
+        ctx.fillRect(105, 30, 208, 2);
+
+        ctx.font = 'bold 10px monospace';
+        ctx.fillStyle = '#738A9C';
+        ctx.fillText(dateStr, 114, 46);
+
+        // Giant Cyberpunk Digital Clock Digits
+        ctx.font = 'bold 30px monospace';
+        ctx.fillStyle = (state.stage === 2) ? '#66FFBB' : '#00F0FF';
+        ctx.fillText(`${hh}${colon}${mm}`, 112, 82);
+        ctx.font = 'bold 16px monospace';
+        ctx.fillStyle = '#FFDD00';
+        ctx.fillText(`:${ss}`, 206, 82);
+
+        // Mini-Haro Companion in Clock Card Corner!
+        const hb = (state.animOffset % 2) * 3;
+        drawScaledSprite('HARO', state.animOffset % 2, 260, 42 - hb, 2);
+
+        ctx.font = '9px monospace';
+        ctx.fillStyle = state.missionActive ? '#00FF88' : '#738A9C';
+        ctx.fillText(state.missionActive ? 'HARO: TICKET IN!' : 'HARO: SYNCED', 114, 98);
+
+        // Right Middle: Sculpted Twin Segmented Vitals Card (CPU & RAM)
+        ctx.fillStyle = '#0E1626';
+        ctx.fillRect(104, 112, 210, 56);
+        ctx.strokeStyle = '#1E2D4A';
+        ctx.strokeRect(104.5, 112.5, 209, 55);
+
+        ctx.font = 'bold 10px monospace';
+        ctx.fillStyle = '#00F0FF';
+        ctx.fillText('CPU', 112, 130);
+        drawSegmentedBar(140, 121, 118, 10, 14, state.cpu, '#00F0FF', '#FF2A55');
+        ctx.fillStyle = '#F0F6FC';
+        ctx.fillText(state.cpu.toFixed(1) + '%', 264, 130);
+
+        ctx.fillStyle = '#FFDD00';
+        ctx.fillText('RAM', 112, 154);
+        drawSegmentedBar(140, 145, 118, 10, 14, state.ram, '#FFDD00', '#FF6600');
+        ctx.fillStyle = '#F0F6FC';
+        ctx.fillText(state.ram.toFixed(1) + '%', 264, 154);
+
+        // Right Bottom: Live Tactical Mission Pill
+        ctx.fillStyle = state.circuitBreaker ? '#3B0715' : (state.missionActive ? '#06331A' : '#111A2E');
+        ctx.fillRect(104, 174, 210, 28);
+        ctx.strokeStyle = state.circuitBreaker ? '#FF2A55' : (state.missionActive ? '#00FF88' : '#00F0FF');
+        ctx.strokeRect(104.5, 174.5, 209, 27);
+        ctx.font = 'bold 10px monospace';
+        ctx.fillStyle = state.circuitBreaker ? '#FF2A55' : (state.missionActive ? '#66FFBB' : '#00F0FF');
+        const pillText = state.circuitBreaker
+          ? '🚨 BREAKER TRIPPED // HALTED'
+          : (state.missionActive ? '⚡ #308 ANDOR // GATES ACTIVE' : '● K-2SO STANDBY // POLLER OK');
+        ctx.fillText(pillText, 112, 192);
+
+      } else if (state.activeTab === 1) {
+        // =====================================================================
+        // TAB 1: [MECHA] — CELESTIAL BEING MOBILE SUIT HANGAR & CUTSCENE DECK
+        // =====================================================================
+        ctx.fillStyle = '#131A29';
+        ctx.fillRect(6, 30, 90, 94);
+        ctx.strokeStyle = (state.stage === 2) ? '#FF2A55' : '#00F0FF';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(6.5, 30.5, 89, 93);
+
+        drawPetSanctuary(15, 39);
+
+        const stageNames = ['UNIT: PROTO-GUNDAM', 'UNIT: RX-CYBER GUNDAM', 'UNIT: EXIA [TRANS-AM]', 'UNIT: 404 WRECK'];
+        const stageCols  = ['#00FF88', '#00F0FF', '#FF2A55', '#FF2A55'];
+        ctx.font = 'bold 11px monospace';
+        ctx.fillStyle = stageCols[state.stage];
+        ctx.fillText(stageNames[state.stage], 104, 44);
+
+        ctx.font = '10px monospace';
+        ctx.fillStyle = (state.stage === 2) ? '#66FFBB' : '#738A9C';
+        ctx.fillText(state.stage === 2 ? 'ARMOR: RED-SHIFT OVERDRIVE' : 'ARMOR: PHASE-SHIFT TITANIUM', 104, 60);
+
+        // Evolution Tier Runway Bar (0% -> 30% -> 70% -> 100%)
+        ctx.fillStyle = '#FFB800';
+        ctx.fillText('EVOLUTION THRESHOLD (30% / 70%):', 104, 78);
+        drawSegmentedBar(104, 84, 156, 10, 16, state.cpu, '#00FF88', '#FF2A55');
+        // Threshold markers at 30% and 70%
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(104 + Math.round(156 * 0.30), 82, 2, 14);
+        ctx.fillRect(104 + Math.round(156 * 0.70), 82, 2, 14);
+        ctx.font = 'bold 10px monospace';
+        ctx.fillText(state.cpu.toFixed(0) + '%', 266, 93);
+
+        ctx.font = '9px monospace';
+        ctx.fillStyle = '#00FF88'; ctx.fillText('PROTO', 104, 110);
+        ctx.fillStyle = '#00F0FF'; ctx.fillText('RX-78', 154, 110);
+        ctx.fillStyle = '#FF2A55'; ctx.fillText('TRANS-AM!', 212, 110);
+
+        // Bottom Interactive Cutscene Launchpad Buttons (Touchscreen Ready!)
+        ctx.fillStyle = '#0E1626';
+        ctx.fillRect(6, 130, 308, 72);
+        ctx.strokeStyle = '#1B2438';
+        ctx.strokeRect(6.5, 130.5, 307, 71);
+        ctx.font = 'bold 9px monospace';
+        ctx.fillStyle = '#738A9C';
+        ctx.fillText('TOUCH COCKPIT CUTSCENE LAUNCHERS:', 14, 144);
+
+        // 3 Touch Launcher Pills
+        ctx.fillStyle = '#3B0715'; ctx.fillRect(12, 152, 94, 42);
+        ctx.strokeStyle = '#FF2A55'; ctx.strokeRect(12.5, 152.5, 93, 41);
+        ctx.fillStyle = '#FF2A55'; ctx.fillText('[☄️ TRANS-AM]', 18, 176);
+
+        ctx.fillStyle = '#06331A'; ctx.fillRect(113, 152, 94, 42);
+        ctx.strokeStyle = '#00FF88'; ctx.strokeRect(113.5, 152.5, 93, 41);
+        ctx.fillStyle = '#66FFBB'; ctx.fillText('[🟢 HARO ALERT]', 117, 176);
+
+        ctx.fillStyle = '#0D2A3A'; ctx.fillRect(214, 152, 94, 42);
+        ctx.strokeStyle = '#00F0FF'; ctx.strokeRect(214.5, 152.5, 93, 41);
+        ctx.fillStyle = '#00F0FF'; ctx.fillText('[⚡ BUSTER FX]', 219, 176);
+
+      } else if (state.activeTab === 2) {
+        // =====================================================================
+        // TAB 2: [GATES] — THE ANDOR / CASSIAN TACTICAL PIPELINE RUNWAY
+        // =====================================================================
+        ctx.fillStyle = '#0E1626';
+        ctx.fillRect(8, 30, 304, 36);
+        ctx.strokeStyle = state.missionActive ? '#00FF88' : '#00F0FF';
+        ctx.strokeRect(8.5, 30.5, 303, 35);
+
+        ctx.font = 'bold 11px monospace';
+        ctx.fillStyle = state.missionActive ? '#66FFBB' : '#00F0FF';
+        ctx.fillText(state.missionActive ? 'MISSION: #308 // ANDOR_INVERTED' : 'MISSION: STANDBY // AWAITING TICKET', 16, 45);
+
+        ctx.font = '10px monospace';
+        ctx.fillStyle = '#738A9C';
+        ctx.fillText(state.missionActive ? 'STAGE: VERIFIER GATES | ATTEMPT #1' : 'POLLER DAEMON: LISTENING (2.5s)', 16, 60);
+        ctx.fillStyle = '#FFDD00';
+        ctx.fillText(state.missionActive ? '00:48' : '00:00', 270, 45);
+
+        // Connected 2x2 Gate Pipeline Cards with Flow Chevrons
+        const gates = [
+          { x: 8,   y: 72, code: 'G0', name: 'INTEGRITY', st: state.circuitBreaker ? 'FAIL' : 'PASS', pass: !state.circuitBreaker },
+          { x: 166, y: 72, code: 'G1', name: 'AST LINTER', st: state.circuitBreaker ? 'FAIL' : 'PASS', pass: !state.circuitBreaker },
+          { x: 8,   y: 112, code: 'G2', name: 'ASSERTIONS', st: state.missionActive ? 'RUN' : 'PASS', pass: !state.circuitBreaker },
+          { x: 166, y: 112, code: 'G3', name: 'BREAKER', st: state.circuitBreaker ? 'TRIP' : 'CLEAR', pass: !state.circuitBreaker }
+        ];
+        // Connector lines
+        ctx.fillStyle = '#00F0FF';
+        ctx.fillRect(154, 86, 12, 3);
+        ctx.fillRect(154, 126, 12, 3);
+
+        gates.forEach(g => {
+          ctx.fillStyle = g.pass ? '#062916' : '#3B0715';
+          ctx.fillRect(g.x, g.y, 146, 34);
+          ctx.strokeStyle = g.pass ? '#00FF88' : '#FF2A55';
+          ctx.strokeRect(g.x + 0.5, g.y + 0.5, 145, 33);
+          ctx.font = 'bold 10px monospace';
+          ctx.fillStyle = g.pass ? '#66FFBB' : '#FF2A55';
+          ctx.fillText(`[${g.code}] ${g.name}`, g.x + 8, g.y + 15);
+          ctx.font = '9px monospace';
+          ctx.fillStyle = '#F0F6FC';
+          ctx.fillText(`STATUS: ${g.st}`, g.x + 8, g.y + 28);
+        });
+
+        // Split Tactical Action Bar at Bottom
+        ctx.fillStyle = '#0D2A3A';
+        ctx.fillRect(8, 154, 146, 44);
+        ctx.strokeStyle = '#00F0FF';
+        ctx.strokeRect(8.5, 154.5, 145, 43);
+        ctx.font = 'bold 10px monospace';
+        ctx.fillStyle = '#00F0FF';
+        ctx.fillText('[ 🔄 FORCE POLL ]', 24, 180);
+
+        ctx.fillStyle = state.circuitBreaker ? '#3B0715' : '#131A29';
+        ctx.fillRect(166, 154, 146, 44);
+        ctx.strokeStyle = state.circuitBreaker ? '#FF2A55' : '#00FF88';
+        ctx.strokeRect(166.5, 154.5, 145, 43);
+        ctx.fillStyle = state.circuitBreaker ? '#FF2A55' : '#66FFBB';
+        ctx.fillText('[ 🛡️ ACK BREAKER ]', 180, 180);
+
+      } else if (state.activeTab === 3) {
+        // =====================================================================
+        // TAB 3: [SYSTEM] — GN-DRIVE REACTOR TELEMETRY & COCKPIT HARDWARE DECK
+        // =====================================================================
+        const bars = [
+          { label: 'CPU',  val: state.cpu,  col: '#00F0FF', hi: '#FF2A55', y: 34 },
+          { label: 'RAM',  val: state.ram,  col: '#FFDD00', hi: '#FF6600', y: 56 },
+          { label: 'DSK',  val: state.disk, col: '#00FF88', hi: '#00FF88', y: 78 }
+        ];
+        ctx.font = 'bold 10px monospace';
+        bars.forEach(b => {
+          ctx.fillStyle = b.col;
+          ctx.fillText(b.label, 10, b.y + 10);
+          drawSegmentedBar(46, b.y, 212, 11, 20, b.val, b.col, b.hi);
+          ctx.fillStyle = '#F0F6FC';
+          ctx.fillText(b.val.toFixed(1) + '%', 266, b.y + 10);
+        });
+
+        // 2x2 Neon Telemetry Badges (Poller, Ollama, Load, Uptime)
+        const badges = [
+          { x: 8,   y: 98,  txt: '● POLLER: ACTIVE', col: '#00FF88' },
+          { x: 164, y: 98,  txt: '● OLLAMA: ACTIVE', col: '#00F0FF' },
+          { x: 8,   y: 124, txt: '◆ LOAD 1M: 1.42',  col: '#FFDD00' },
+          { x: 164, y: 124, txt: '◆ UP: 14h 22m',    col: '#F0F6FC' }
+        ];
+        badges.forEach(bd => {
+          ctx.fillStyle = '#11192B';
+          ctx.fillRect(bd.x, bd.y, 148, 22);
+          ctx.strokeStyle = '#1E2D4A';
+          ctx.strokeRect(bd.x + 0.5, bd.y + 0.5, 147, 21);
+          ctx.font = 'bold 9px monospace';
+          ctx.fillStyle = bd.col;
+          ctx.fillText(bd.txt, bd.x + 8, bd.y + 14);
+        });
+
+        // Bottom Hardware Cockpit Controls (Backlight PWM + Audio Synth + LDR)
+        ctx.fillStyle = '#0E1626';
+        ctx.fillRect(8, 152, 304, 48);
+        ctx.strokeStyle = '#00F0FF';
+        ctx.strokeRect(8.5, 152.5, 303, 47);
+
+        ctx.font = 'bold 9px monospace';
+        ctx.fillStyle = '#00F0FF';
+        ctx.fillText(`PWM BRIGHTNESS: ${state.backlight}%`, 16, 168);
+        drawSegmentedBar(140, 160, 162, 8, 12, state.backlight, '#00F0FF');
+
+        ctx.fillStyle = '#66FFBB';
+        ctx.fillText('🔊 AUDIO SYNTH: ON (GPIO26)', 16, 188);
+        ctx.fillStyle = '#FFDD00';
+        ctx.fillText('☀️ LDR: 342', 222, 188);
+      }
+
+      const tabs = ['[CHRONO]', '[MECHA]', '[GATES]', '[SYSTEM]'];
       for (let i = 0; i < 4; i++) {
         const tx = i * 80;
         ctx.fillStyle = (state.activeTab === i) ? '#131A29' : '#0C101A';
@@ -1065,9 +1216,25 @@
         return;
       }
 
-      if (state.activeTab === 0 && x >= 6 && x <= 96 && y >= 32 && y <= 126) {
+      if ((state.activeTab === 0 || state.activeTab === 1) && x >= 6 && x <= 98 && y >= 30 && y <= 198) {
         const nextS = (state.stage + 1) % 4;
         setStage(nextS, true);
+        return;
+      }
+
+      // Touch Cutscene Launcher Buttons on Tab 1 ([MECHA])
+      if (state.activeTab === 1 && y >= 152 && y <= 194) {
+        if (x >= 12 && x <= 106) {
+          setStage(2, false);
+          triggerFullScreenFx('TRANSAM', 1, 2);
+        } else if (x >= 113 && x <= 207) {
+          state.missionActive = true;
+          document.getElementById('chkMission').checked = true;
+          triggerFullScreenFx('HARO', state.stage, state.stage);
+        } else if (x >= 214 && x <= 308) {
+          setStage(1, false);
+          triggerFullScreenFx('LASER', 0, 1);
+        }
       }
     });
 
