@@ -181,14 +181,23 @@ void triggerGundamCutscene(uint8_t fxType, int fromS, int toS) {
   uint16_t colWhite    = 0xFFFF;
 
   gfx.startWrite();
-  for (int t = 0; t < 18; t++) {
-    gfx.fillScreen(colBg);
+  // Differential Frame Buffer Init: clear background ONCE per cutscene (eliminates full-screen flash/flicker!)
+  uint16_t initBg = colBg;
+  if (fxType == 2) initBg = gfx.color565(0x05, 0x13, 0x0E);
+  else if (fxType == 4) initBg = gfx.color565(0x07, 0x09, 0x0E);
+  else if (fxType == 5) initBg = gfx.color565(0x05, 0x07, 0x0B);
+  else if (fxType == 6) initBg = gfx.color565(0x06, 0x0A, 0x12);
+  gfx.fillScreen(initBg);
 
-    // Anime horizontal speedlines
-    for (int i = 0; i < 20; i++) {
-      int ly = (i * 11 + t * 9) % 188 + 26;
-      int lx = ((i * 53 - t * 40) % 320 + 320) % 320;
-      gfx.fillRect(lx, ly, 36, 2, colSpeed);
+  for (int t = 0; t < 18; t++) {
+    if (fxType < 4 && fxType != 2) {
+      gfx.fillScreen(colBg);
+      // Anime horizontal speedlines
+      for (int i = 0; i < 20; i++) {
+        int ly = (i * 11 + t * 9) % 188 + 26;
+        int lx = ((i * 53 - t * 40) % 320 + 320) % 320;
+        gfx.fillRect(lx, ly, 36, 2, colSpeed);
+      }
     }
 
     if (fxType == 0) {
@@ -251,97 +260,103 @@ void triggerGundamCutscene(uint8_t fxType, int fromS, int toS) {
       drawGfxSpriteScaled(curS, t % 2, 100, 56, 5, flash);
     } else if (fxType == 2) {
       // HARO INCOMING TICKET ALERT CUTSCENE ("TICKET IN! TICKET IN!")
-      gfx.fillScreen(gfx.color565(0x05, 0x13, 0x0E));
-      gfx.fillRect(0, 0, 320, 24, gfx.color565(0x0A, 0x2E, 0x1F));
-      gfx.fillRect(0, 216, 320, 24, gfx.color565(0x0A, 0x2E, 0x1F));
+      if (t == 0) {
+        gfx.fillRect(0, 0, 320, 24, gfx.color565(0x0A, 0x2E, 0x1F));
+        gfx.fillRect(0, 216, 320, 24, gfx.color565(0x0A, 0x2E, 0x1F));
+        gfx.setTextColor(colCyan);
+        gfx.setCursor(18, 223);
+        gfx.print("CATAPULT DECK READY // K-2SO SCRAMBLE");
+      }
+      gfx.fillRect(8, 5, 304, 14, gfx.color565(0x0A, 0x2E, 0x1F));
       gfx.setTextColor((t % 2 == 0) ? colMint : colGold);
       gfx.setCursor(10, 7);
       gfx.print(">>> HARO COMMS: INCOMING TICKET ALERT! <<<");
-      gfx.setTextColor(colCyan);
-      gfx.setCursor(18, 223);
-      gfx.print("CATAPULT DECK READY // K-2SO SCRAMBLE");
 
-      // Bouncing HARO with flapping ear-wings (stage 4 = HARO)
+      // Clear only HARO's bounce box (no full screen wipe!)
+      gfx.fillRect(8, 46, 100, 124, gfx.color565(0x05, 0x13, 0x0E));
       int bounceY = (t % 4 == 1 || t % 4 == 2) ? 18 : 0;
       int haroFrame = (bounceY > 0) ? 1 : 0;
       drawGfxSpriteScaled(4, haroFrame, 10, 68 - bounceY, 4);
 
       // Hologram Telemetry Box on Right
-      gfx.fillRect(114, 42, 194, 148, gfx.color565(0x0B, 0x22, 0x30));
-      gfx.drawRect(114, 42, 194, 148, (t % 2 == 0) ? colGreen : colCyan);
+      if (t == 0) {
+        gfx.fillRect(114, 42, 194, 148, gfx.color565(0x0B, 0x22, 0x30));
+        gfx.setTextColor(colGold);
+        gfx.setCursor(124, 86);
+        gfx.printf("TICKET: #%d (%s)", telemetry.missionTicketId, telemetry.missionFolio.c_str());
 
+        gfx.setTextColor(colCyan);
+        gfx.setCursor(124, 112);
+        gfx.printf("PROTOCOL: %s", telemetry.missionProtocol.c_str());
+
+        gfx.setTextColor(colWhite);
+        gfx.setCursor(124, 136);
+        gfx.print("GATES: G0 -> G1 -> G2");
+
+        gfx.fillRect(124, 156, 174, 22, gfx.color565(0x06, 0x33, 0x1A));
+        gfx.drawRect(124, 156, 174, 22, colGreen);
+        gfx.setTextColor(colGreen);
+        gfx.setCursor(132, 163);
+        gfx.print("STATUS: LAUNCHING NOW");
+      }
+      gfx.drawRect(114, 42, 194, 148, (t % 2 == 0) ? colGreen : colCyan);
+      gfx.fillRect(122, 52, 176, 16, gfx.color565(0x0B, 0x22, 0x30));
       gfx.setTextColor(colMint);
       gfx.setCursor(124, 56);
       gfx.print((t % 2 == 0) ? "\"TICKET IN! TICKET IN!\"" : "\"SCRAMBLE! K-2SO GO!\"");
-
-      gfx.setTextColor(colGold);
-      gfx.setCursor(124, 86);
-      gfx.printf("TICKET: #%d (%s)", telemetry.missionTicketId, telemetry.missionFolio.c_str());
-
-      gfx.setTextColor(colCyan);
-      gfx.setCursor(124, 112);
-      gfx.printf("PROTOCOL: %s", telemetry.missionProtocol.c_str());
-
-      gfx.setTextColor(colWhite);
-      gfx.setCursor(124, 136);
-      gfx.print("GATES: G0 -> G1 -> G2");
-
-      gfx.fillRect(124, 156, 174, 22, gfx.color565(0x06, 0x33, 0x1A));
-      gfx.drawRect(124, 156, 174, 22, colGreen);
-      gfx.setTextColor(colGreen);
-      gfx.setCursor(132, 163);
-      gfx.print("STATUS: LAUNCHING NOW");
     } else if (fxType == 4) {
-      // OPTION B: CELESTIAL BEING SPLIT-EMBLEM REVEAL (DATAHOLICS DARK EDITORIAL BOOT)
+      // OPTION B: CELESTIAL BEING SPLIT-EMBLEM REVEAL (ZERO-FLICKER DIFFERENTIAL RENDER)
       uint16_t colDark   = gfx.color565(0x07, 0x09, 0x0E);
       uint16_t colOrange = gfx.color565(0xFF, 0x73, 0x00);
       uint16_t colHair   = gfx.color565(0x1E, 0x26, 0x36);
       uint16_t colDim    = gfx.color565(0x73, 0x8A, 0x9C);
 
-      gfx.fillScreen(colDark);
+      if (t == 0) {
+        // Static Architectural Blueprint Hairlines & Bottom Signature
+        gfx.drawFastHLine(0, 26, 320, colHair);
+        gfx.drawFastHLine(0, 206, 320, colHair);
+        gfx.drawFastVLine(160, 0, 26, colHair);
 
-      // Architectural Blueprint Hairlines
-      gfx.drawFastHLine(0, 26, 320, colHair);
-      gfx.drawFastHLine(0, 206, 320, colHair);
-      gfx.drawFastVLine(160, 0, 26, colHair);
+        gfx.setTextSize(1);
+        gfx.setTextColor(colDim);
+        gfx.setCursor(10, 9);
+        gfx.print("[01] SOVEREIGN ARCHITECTURE");
+        gfx.setTextColor(colOrange);
+        gfx.setCursor(224, 9);
+        gfx.print("BOOT // SEQ-00");
 
-      gfx.setTextSize(1);
-      gfx.setTextColor(colDim);
-      gfx.setCursor(10, 9);
-      gfx.print("[01] SOVEREIGN ARCHITECTURE");
-      gfx.setTextColor(colOrange);
-      gfx.setCursor(224, 9);
-      gfx.print("BOOT // SEQ-00");
-
-      // Exact Vector Dataholics Split-Wing Emblem (Centered at 160, 72)
-      int slide = (t < 6) ? (6 - t) * 7 : 0;
-      int cx = 160;
-      int cy = 72;
-
-      // Left Orange Wing Polygon (Slanted Top & Bottom)
-      int lxOuter = cx - 46 - slide;
-      int lxInner = cx - 6 - slide;
-      gfx.fillTriangle(lxOuter, cy - 23, lxInner, cy - 30, lxInner, cy + 30, colOrange);
-      gfx.fillTriangle(lxOuter, cy - 23, lxInner, cy + 30, lxOuter, cy + 23, colOrange);
-
-      // Right Orange Wing Polygon (Slanted Top & Bottom)
-      int rxInner = cx + 6 + slide;
-      int rxOuter = cx + 46 + slide;
-      gfx.fillTriangle(rxInner, cy - 30, rxOuter, cy - 23, rxOuter, cy + 23, colOrange);
-      gfx.fillTriangle(rxInner, cy - 30, rxOuter, cy + 23, rxInner, cy + 30, colOrange);
-
-      // Negative-Space Inner Circles & Horizontal Bridge Cutout
-      gfx.fillCircle(cx - 25 - slide, cy, 13, colDark);
-      gfx.fillCircle(cx + 25 + slide, cy, 13, colDark);
-      gfx.fillRect(cx - 25 - slide, cy - 5, 50 + slide * 2, 10, colDark);
-
-      // Scanline Sweep during early ticks
-      if (t <= 9) {
-        gfx.fillRect(104, 42 + t * 6, 112, 2, colGold);
+        gfx.setTextColor(colGold);
+        gfx.setCursor(10, 216);
+        gfx.print("LUIS MORALES // MY CTO");
+        gfx.setTextColor(colGreen);
+        gfx.setCursor(184, 216);
+        gfx.print("[ CLEARANCE: LEVEL 0 ]");
       }
 
-      // Editorial Typography Stack
-      if (t >= 3) {
+      // Update Emblem Region Only while sliding (ticks 0..7)
+      if (t <= 7) {
+        gfx.fillRect(60, 38, 200, 68, colDark);
+        int slide = (t < 6) ? (6 - t) * 7 : 0;
+        int cx = 160;
+        int cy = 72;
+
+        int lxOuter = cx - 46 - slide;
+        int lxInner = cx - 6 - slide;
+        gfx.fillTriangle(lxOuter, cy - 23, lxInner, cy - 30, lxInner, cy + 30, colOrange);
+        gfx.fillTriangle(lxOuter, cy - 23, lxInner, cy + 30, lxOuter, cy + 23, colOrange);
+
+        int rxInner = cx + 6 + slide;
+        int rxOuter = cx + 46 + slide;
+        gfx.fillTriangle(rxInner, cy - 30, rxOuter, cy - 23, rxOuter, cy + 23, colOrange);
+        gfx.fillTriangle(rxInner, cy - 30, rxOuter, cy + 23, rxInner, cy + 30, colOrange);
+
+        gfx.fillCircle(cx - 25 - slide, cy, 13, colDark);
+        gfx.fillCircle(cx + 25 + slide, cy, 13, colDark);
+        gfx.fillRect(cx - 25 - slide, cy - 5, 50 + slide * 2, 10, colDark);
+      }
+
+      // Editorial Typography Stack (Drawn once at t == 4)
+      if (t == 4) {
         gfx.setTextSize(2);
         gfx.setTextColor(colWhite);
         gfx.setCursor(52, 118);
@@ -353,87 +368,79 @@ void triggerGundamCutscene(uint8_t fxType, int fromS, int toS) {
         gfx.print("[ TiRA SYSTEM // SOVEREIGN AI ENGINE ]");
       }
 
-      // Executive Owner Credential Pill
-      if (t >= 6) {
+      // Executive Owner Credential Pill (Drawn once at t == 7)
+      if (t == 7) {
         gfx.fillRect(46, 164, 228, 24, gfx.color565(0x0E, 0x15, 0x24));
         gfx.drawRect(46, 164, 228, 24, colOrange);
+        gfx.setTextSize(1);
         gfx.setTextColor(colGold);
         gfx.setCursor(102, 172);
         gfx.print("LUIS MORALES DEVICE");
       }
 
-      // Bottom Corner Signature & CTO Clearance
-      gfx.setTextColor(colGold);
-      gfx.setCursor(10, 216);
-      gfx.print("LUIS MORALES // MY CTO");
-      gfx.setTextColor(colGreen);
-      gfx.setCursor(184, 216);
-      gfx.print("[ CLEARANCE: LEVEL 0 ]");
-
-      // Bottom Edge Sweeping Orange Progress Hairline (0..320px)
+      // Smooth Bottom Orange Progress Hairline
       int progW = min(320, (t + 1) * 18);
       gfx.fillRect(0, 237, progW, 3, colOrange);
     } else if (fxType == 5) {
-      // OPTION A: THE SOVEREIGN MECHA OS BOOT (GUNDAM BIOS + EXECUTIVE HUD)
+      // OPTION A: THE SOVEREIGN MECHA OS BOOT (ZERO-FLICKER DIFFERENTIAL RENDER)
       uint16_t colDark   = gfx.color565(0x05, 0x07, 0x0B);
       uint16_t colOrange = gfx.color565(0xFF, 0x73, 0x00);
       uint16_t colHazard = gfx.color565(0x1C, 0x0D, 0x04);
 
-      gfx.fillScreen(colDark);
+      if (t == 0) {
+        gfx.fillRect(0, 0, 320, 22, colHazard);
+        gfx.fillRect(0, 218, 320, 22, colHazard);
+        gfx.fillRect(0, 21, 320, 2, colOrange);
+        gfx.fillRect(0, 217, 320, 2, colOrange);
 
-      // Top & Bottom Hazard Tactical Bars
-      gfx.fillRect(0, 0, 320, 22, colHazard);
-      gfx.fillRect(0, 218, 320, 22, colHazard);
-      gfx.fillRect(0, 21, 320, 2, colOrange);
-      gfx.fillRect(0, 217, 320, 2, colOrange);
+        gfx.setTextSize(1);
+        gfx.setTextColor(colOrange);
+        gfx.setCursor(16, 7);
+        gfx.print("/// G-FRAME BIOS v3.0 // SOVEREIGN IGNITION ///");
+        gfx.setTextColor(colGreen);
+        gfx.setCursor(44, 225);
+        gfx.print("NODE: K-2SO [192.168.1.40] // ONLINE");
 
-      gfx.setTextSize(1);
-      gfx.setTextColor(colOrange);
-      gfx.setCursor(16, 7);
-      gfx.print("/// G-FRAME BIOS v3.0 // SOVEREIGN IGNITION ///");
-      gfx.setTextColor(colGreen);
-      gfx.setCursor(44, 225);
-      gfx.print("NODE: K-2SO [192.168.1.40] // ONLINE");
+        gfx.setTextSize(2);
+        gfx.setTextColor(colWhite);
+        gfx.setCursor(52, 104);
+        gfx.print("D A T A H O L I C S");
 
-      int cx = 160;
-      int cy = 62;
-      if (t < 4) {
-        gfx.drawRect(160 - (t + 1) * 28, 30, (t + 1) * 56, 64, colOrange);
+        gfx.setTextSize(1);
+        gfx.setTextColor(colCyan);
+        gfx.setCursor(58, 126);
+        gfx.print("TiRA AUTONOMOUS SYSTEM // CORE");
+
+        gfx.fillRect(18, 140, 284, 38, gfx.color565(0x14, 0x0C, 0x08));
+        gfx.drawRect(18, 140, 284, 38, colGold);
+        gfx.setTextColor(colGold);
+        gfx.setCursor(52, 148);
+        gfx.print("* LUIS MORALES DEVICE [MY CTO] *");
+        gfx.setTextColor(colMint);
+        gfx.setCursor(48, 163);
+        gfx.print("BIOMETRIC AUTH: VERIFIED // LEVEL 0");
       }
-      gfx.drawRect(98, 28, 124, 68, colCyan);
 
-      // Dataholics Split-Wing Emblem with ignition flash on t == 3
-      uint16_t embCol = (t == 3 || t == 4) ? colWhite : colOrange;
-      gfx.fillTriangle(cx - 44, cy - 21, cx - 5, cy - 28, cx - 5, cy + 28, embCol);
-      gfx.fillTriangle(cx - 44, cy - 21, cx - 5, cy + 28, cx - 44, cy + 21, embCol);
-      gfx.fillTriangle(cx + 5, cy - 28, cx + 44, cy - 21, cx + 44, cy + 21, embCol);
-      gfx.fillTriangle(cx + 5, cy - 28, cx + 44, cy + 21, cx + 5, cy + 28, embCol);
-      gfx.fillCircle(cx - 24, cy, 12, colDark);
-      gfx.fillCircle(cx + 24, cy, 12, colDark);
-      gfx.fillRect(cx - 24, cy - 5, 48, 10, colDark);
+      // Update Emblem only on ticks 0, 3, 5 (Flash effect without clearing screen)
+      if (t == 0 || t == 3 || t == 5) {
+        gfx.fillRect(98, 28, 124, 68, colDark);
+        gfx.drawRect(98, 28, 124, 68, colCyan);
+        int cx = 160;
+        int cy = 62;
+        uint16_t embCol = (t == 3) ? colWhite : colOrange;
+        gfx.fillTriangle(cx - 44, cy - 21, cx - 5, cy - 28, cx - 5, cy + 28, embCol);
+        gfx.fillTriangle(cx - 44, cy - 21, cx - 5, cy + 28, cx - 44, cy + 21, embCol);
+        gfx.fillTriangle(cx + 5, cy - 28, cx + 44, cy - 21, cx + 44, cy + 21, embCol);
+        gfx.fillTriangle(cx + 5, cy - 28, cx + 44, cy + 21, cx + 5, cy + 28, embCol);
+        gfx.fillCircle(cx - 24, cy, 12, colDark);
+        gfx.fillCircle(cx + 24, cy, 12, colDark);
+        gfx.fillRect(cx - 24, cy - 5, 48, 10, colDark);
+      }
 
-      gfx.setTextSize(2);
-      gfx.setTextColor(colWhite);
-      gfx.setCursor(52, 104);
-      gfx.print("D A T A H O L I C S");
-
-      gfx.setTextSize(1);
-      gfx.setTextColor(colCyan);
-      gfx.setCursor(58, 126);
-      gfx.print("TiRA AUTONOMOUS SYSTEM // CORE");
-
-      // Executive Biometric Clearance Box
-      gfx.fillRect(18, 140, 284, 38, gfx.color565(0x14, 0x0C, 0x08));
-      gfx.drawRect(18, 140, 284, 38, colGold);
-      gfx.setTextColor(colGold);
-      gfx.setCursor(52, 148);
-      gfx.print("* LUIS MORALES DEVICE [MY CTO] *");
-      gfx.setTextColor(colMint);
-      gfx.setCursor(48, 163);
-      gfx.print("BIOMETRIC AUTH: VERIFIED // LEVEL 0");
-
-      // 14-Segment Orange Boot Bar
+      // Update 14-Segment Progress Bar only
+      gfx.fillRect(18, 188, 106, 14, colDark);
       int pct = min(100, ((t + 1) * 100) / 18);
+      gfx.setTextSize(1);
       gfx.setTextColor(colOrange);
       gfx.setCursor(18, 192);
       gfx.printf("BOOTING OS: %d%%", pct);
@@ -443,66 +450,70 @@ void triggerGundamCutscene(uint8_t fxType, int fromS, int toS) {
         gfx.fillRect(128 + s * 12, 189, 9, 11, sCol);
       }
     } else if (fxType == 6) {
-      // OPTION C: THE HARO & GUNDAM HANGAR WAKE-UP (INTERACTIVE MECHA BOOT)
+      // OPTION C: THE HARO & GUNDAM HANGAR WAKE-UP (ZERO-FLICKER DIFFERENTIAL RENDER)
       uint16_t colDark   = gfx.color565(0x06, 0x0A, 0x12);
       uint16_t colCard   = gfx.color565(0x0C, 0x13, 0x22);
       uint16_t colGrid   = gfx.color565(0x11, 0x1C, 0x2D);
       uint16_t colOrange = gfx.color565(0xFF, 0x73, 0x00);
 
-      gfx.fillScreen(colDark);
-      for (int gx = 0; gx < 320; gx += 20) gfx.drawFastVLine(gx, 0, 240, colGrid);
-      for (int gy = 0; gy < 240; gy += 20) gfx.drawFastHLine(0, gy, 320, colGrid);
+      if (t == 0) {
+        for (int gx = 0; gx < 320; gx += 20) gfx.drawFastVLine(gx, 0, 240, colGrid);
+        for (int gy = 0; gy < 240; gy += 20) gfx.drawFastHLine(0, gy, 320, colGrid);
 
-      // Left Card: Dataholics Emblem + TiRA System + Luis Morales Badge
-      gfx.fillRect(10, 12, 176, 186, colCard);
-      gfx.drawRect(10, 12, 176, 186, colOrange);
+        // Static Left Card: Dataholics Emblem + TiRA System + Luis Morales Badge
+        gfx.fillRect(10, 12, 176, 186, colCard);
+        gfx.drawRect(10, 12, 176, 186, colOrange);
 
-      int cx = 98;
-      int cy = 54;
-      gfx.fillTriangle(cx - 40, cy - 19, cx - 5, cy - 25, cx - 5, cy + 25, colOrange);
-      gfx.fillTriangle(cx - 40, cy - 19, cx - 5, cy + 25, cx - 40, cy + 19, colOrange);
-      gfx.fillTriangle(cx + 5, cy - 25, cx + 40, cy - 19, cx + 40, cy + 19, colOrange);
-      gfx.fillTriangle(cx + 5, cy - 25, cx + 40, cy + 19, cx + 5, cy + 25, colOrange);
-      gfx.fillCircle(cx - 22, cy, 11, colCard);
-      gfx.fillCircle(cx + 22, cy, 11, colCard);
-      gfx.fillRect(cx - 22, cy - 4, 44, 8, colCard);
+        int cx = 98;
+        int cy = 54;
+        gfx.fillTriangle(cx - 40, cy - 19, cx - 5, cy - 25, cx - 5, cy + 25, colOrange);
+        gfx.fillTriangle(cx - 40, cy - 19, cx - 5, cy + 25, cx - 40, cy + 19, colOrange);
+        gfx.fillTriangle(cx + 5, cy - 25, cx + 40, cy - 19, cx + 40, cy + 19, colOrange);
+        gfx.fillTriangle(cx + 5, cy - 25, cx + 40, cy + 19, cx + 5, cy + 25, colOrange);
+        gfx.fillCircle(cx - 22, cy, 11, colCard);
+        gfx.fillCircle(cx + 22, cy, 11, colCard);
+        gfx.fillRect(cx - 22, cy - 4, 44, 8, colCard);
 
-      gfx.setTextSize(1);
-      gfx.setTextColor(colWhite);
-      gfx.setCursor(40, 96);
-      gfx.print("D A T A H O L I C S");
+        gfx.setTextSize(1);
+        gfx.setTextColor(colWhite);
+        gfx.setCursor(40, 96);
+        gfx.print("D A T A H O L I C S");
 
-      gfx.setTextColor(colCyan);
-      gfx.setCursor(48, 116);
-      gfx.print("TiRA SYSTEM v3.0");
+        gfx.setTextColor(colCyan);
+        gfx.setCursor(48, 116);
+        gfx.print("TiRA SYSTEM v3.0");
 
-      gfx.fillRect(20, 134, 156, 48, gfx.color565(0x1A, 0x12, 0x0B));
-      gfx.drawRect(20, 134, 156, 48, colGold);
-      gfx.setTextColor(colGold);
-      gfx.setCursor(60, 145);
-      gfx.print("LUIS MORALES");
-      gfx.setTextColor(colGreen);
-      gfx.setCursor(32, 164);
-      gfx.print("EXECUTIVE DEVICE [CTO]");
+        gfx.fillRect(20, 134, 156, 48, gfx.color565(0x1A, 0x12, 0x0B));
+        gfx.drawRect(20, 134, 156, 48, colGold);
+        gfx.setTextColor(colGold);
+        gfx.setCursor(60, 145);
+        gfx.print("LUIS MORALES");
+        gfx.setTextColor(colGreen);
+        gfx.setCursor(32, 164);
+        gfx.print("EXECUTIVE DEVICE [CTO]");
 
-      // Right Side: Bouncing HARO + Waking Gundam in Hangar!
+        // Static Bottom Strip
+        gfx.fillRect(10, 206, 300, 24, gfx.color565(0x13, 0x1A, 0x29));
+        gfx.drawRect(10, 206, 300, 24, colCyan);
+        gfx.setTextColor(colOrange);
+        gfx.setCursor(38, 214);
+        gfx.print(">>> HANGAR READY // K-2SO TETHERED <<<");
+      }
+
+      // Update Only Right-Side Bouncing HARO + Waking Gundam!
+      gfx.fillRect(204, 4, 96, 78, colDark);
       int bounce = (t % 4 == 1 || t % 4 == 2) ? 10 : 0;
       drawGfxSpriteScaled(4, (bounce > 0) ? 1 : 0, 212, 14 - bounce, 3);
 
       gfx.fillRect(194, 84, 116, 20, gfx.color565(0x06, 0x33, 0x1A));
       gfx.drawRect(194, 84, 116, 20, colGreen);
+      gfx.setTextSize(1);
       gfx.setTextColor(colMint);
       gfx.setCursor(204, 90);
       gfx.print((t % 2 == 0) ? "\"HELLO MY CTO!\"" : "\"TiRA ONLINE!\"");
 
+      gfx.fillRect(208, 110, 84, 84, colDark);
       drawGfxSpriteScaled(1, t % 2, 214, 112, 3, (t < 6 && t % 2 == 0) ? (int32_t)colCyan : -1);
-
-      // Bottom Full-Width Status Strip
-      gfx.fillRect(10, 206, 300, 24, gfx.color565(0x13, 0x1A, 0x29));
-      gfx.drawRect(10, 206, 300, 24, colCyan);
-      gfx.setTextColor(colOrange);
-      gfx.setCursor(38, 214);
-      gfx.print(">>> HANGAR READY // K-2SO TETHERED <<<");
     } else {
       // RED ALERT / CIRCUIT BREAKER EMP
       gfx.fillRect(0, 0, 320, 24, colRed);

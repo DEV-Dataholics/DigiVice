@@ -191,7 +191,7 @@ void CyberUI::createTabview() {
 }
 
 void CyberUI::buildPetTab(lv_obj_t* parent) {
-  // Left Runway: Gundam Hero Pod (72x72 Sanctuary + Stage Badge)
+  // Left Runway: Gundam Hero Pod (72x72 Sanctuary + Stage Badge + GN Status)
   lv_obj_t* petCard = lv_obj_create(parent);
   lv_obj_set_size(petCard, 92, 166);
   lv_obj_align(petCard, LV_ALIGN_TOP_LEFT, 4, 4);
@@ -199,24 +199,34 @@ void CyberUI::buildPetTab(lv_obj_t* parent) {
   lv_obj_clear_flag(petCard, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_add_event_cb(petCard, pet_touch_cb, LV_EVENT_CLICKED, NULL);
 
+  lv_obj_t* podHdr = lv_label_create(petCard);
+  lv_label_set_text(podHdr, "G-HANGAR // 01");
+  lv_obj_set_style_text_color(podHdr, CYBER_COLOR_GREEN, 0);
+  lv_obj_align(podHdr, LV_ALIGN_TOP_MID, 0, -2);
+
   petCanvas = lv_canvas_create(petCard);
   if (!canvasBuffer) {
     canvasBuffer = (lv_color_t*)malloc(72 * 72 * sizeof(lv_color_t));
   }
   lv_canvas_set_buffer(petCanvas, canvasBuffer, 72, 72, LV_COLOR_FORMAT_RGB565);
-  lv_obj_align(petCanvas, LV_ALIGN_TOP_MID, 0, 2);
+  lv_obj_align(petCanvas, LV_ALIGN_TOP_MID, 0, 14);
 
   petStageLabel = lv_label_create(petCard);
   lv_label_set_text(petStageLabel, "PROTO-GUNDAM");
   lv_obj_set_style_text_color(petStageLabel, CYBER_COLOR_CYAN, 0);
-  lv_obj_align(petStageLabel, LV_ALIGN_BOTTOM_MID, 0, -18);
+  lv_obj_align(petStageLabel, LV_ALIGN_BOTTOM_MID, 0, -28);
 
   lv_obj_t* tapHint = lv_label_create(petCard);
-  lv_label_set_text(tapHint, "[TAP EVOLVE]");
+  lv_label_set_text(tapHint, "TAP TO EVOLVE");
   lv_obj_set_style_text_color(tapHint, CYBER_COLOR_TEXT_DIM, 0);
-  lv_obj_align(tapHint, LV_ALIGN_BOTTOM_MID, 0, -2);
+  lv_obj_align(tapHint, LV_ALIGN_BOTTOM_MID, 0, -14);
 
-  // Right Top: Editorial Chrono Card (Local Time + Date)
+  lv_obj_t* gnHint = lv_label_create(petCard);
+  lv_label_set_text(gnHint, "GN: STABLE");
+  lv_obj_set_style_text_color(gnHint, CYBER_COLOR_GREEN, 0);
+  lv_obj_align(gnHint, LV_ALIGN_BOTTOM_MID, 0, 0);
+
+  // Right Top: Editorial Chrono Card (Local Time + Date + HARO: SYNCED + Mini-Haro Canvas)
   lv_obj_t* clockCard = lv_obj_create(parent);
   lv_obj_set_size(clockCard, 208, 66);
   lv_obj_align(clockCard, LV_ALIGN_TOP_LEFT, 102, 4);
@@ -224,15 +234,28 @@ void CyberUI::buildPetTab(lv_obj_t* parent) {
   lv_obj_clear_flag(clockCard, LV_OBJ_FLAG_SCROLLABLE);
 
   chronoDateLabel = lv_label_create(clockCard);
-  lv_label_set_text(chronoDateLabel, "LOCAL TIME // CST SYNC");
+  lv_label_set_text(chronoDateLabel, "MON - OCT 26 // CST");
   lv_obj_set_style_text_color(chronoDateLabel, CYBER_COLOR_AMBER, 0);
-  lv_obj_align(chronoDateLabel, LV_ALIGN_TOP_LEFT, 2, -2);
+  lv_obj_align(chronoDateLabel, LV_ALIGN_TOP_LEFT, 2, -3);
 
   chronoTimeLabel = lv_label_create(clockCard);
-  lv_label_set_text(chronoTimeLabel, "13 : 52 : 00");
+  lv_label_set_text(chronoTimeLabel, "12 : 08 : 00");
   lv_obj_set_style_text_color(chronoTimeLabel, CYBER_COLOR_CYAN, 0);
-  lv_obj_set_style_transform_scale(chronoTimeLabel, 360, 0); // ~1.4x crisp scale
-  lv_obj_align(chronoTimeLabel, LV_ALIGN_BOTTOM_LEFT, 6, -4);
+  lv_obj_set_style_transform_scale(chronoTimeLabel, 330, 0); // Crisp scaled clock
+  lv_obj_align(chronoTimeLabel, LV_ALIGN_TOP_LEFT, 2, 13);
+
+  chronoHaroLabel = lv_label_create(clockCard);
+  lv_label_set_text(chronoHaroLabel, "HARO: SYNCED");
+  lv_obj_set_style_text_color(chronoHaroLabel, CYBER_COLOR_GREEN, 0);
+  lv_obj_align(chronoHaroLabel, LV_ALIGN_BOTTOM_LEFT, 2, 3);
+
+  // Mini-Haro 48x48 Companion Canvas inside Clock Card Right Corner!
+  haroCanvas = lv_canvas_create(clockCard);
+  if (!haroBuffer) {
+    haroBuffer = (lv_color_t*)malloc(48 * 48 * sizeof(lv_color_t));
+  }
+  lv_canvas_set_buffer(haroCanvas, haroBuffer, 48, 48, LV_COLOR_FORMAT_RGB565);
+  lv_obj_align(haroCanvas, LV_ALIGN_RIGHT_MID, 2, 2);
 
   // Right Middle: Sculpted Twin Vitals Card (CPU & RAM)
   lv_obj_t* vitalsCard = lv_obj_create(parent);
@@ -612,6 +635,31 @@ void CyberUI::drawSpriteOnCanvas(int stage, int scale) {
       lv_canvas_set_px(petCanvas, px + 1, py, pedColor, LV_OPA_COVER);
     }
   }
+
+  // 6. Render Animated 48x48 Mini-Haro Companion inside the Clock Card!
+  if (haroCanvas) {
+    lv_color_t cardBg = CYBER_COLOR_PANEL;
+    for (int y = 0; y < 48; y++) {
+      for (int x = 0; x < 48; x++) {
+        lv_canvas_set_px(haroCanvas, x, y, cardBg, LV_OPA_COVER);
+      }
+    }
+    const char* const* haroMap = altFrame ? sprite_haro_f1 : sprite_haro_f0;
+    for (int r = 0; r < 24; r++) {
+      const char* hRow = haroMap[r];
+      for (int c = 0; c < 24; c++) {
+        char hCode = hRow[c];
+        if (hCode != '.' && hCode != '\0') {
+          lv_color_t hCol = resolveSpriteColor(hCode);
+          for (int dy = 0; dy < 2; dy++) {
+            for (int dx = 0; dx < 2; dx++) {
+              lv_canvas_set_px(haroCanvas, c * 2 + dx, r * 2 + dy, hCol, LV_OPA_COVER);
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
 extern void triggerGundamCutscene(uint8_t fxType, int fromS, int toS);
@@ -633,19 +681,19 @@ void CyberUI::triggerEvolutionFanfare(int stage) {
   drawSpriteOnCanvas(currentStage);
   switch (currentStage) {
     case 0:
-      lv_label_set_text(petStageLabel, "AI: PROTO-GUNDAM");
+      lv_label_set_text(petStageLabel, "PROTO-GUNDAM");
       lv_obj_set_style_text_color(petStageLabel, CYBER_COLOR_CYAN, 0);
       break;
     case 1:
-      lv_label_set_text(petStageLabel, "AI: RX-CYBER GUNDAM");
+      lv_label_set_text(petStageLabel, "RX-78 CYBER");
       lv_obj_set_style_text_color(petStageLabel, CYBER_COLOR_GREEN, 0);
       break;
     case 2:
-      lv_label_set_text(petStageLabel, "AI: EXIA [TRANS-AM]");
+      lv_label_set_text(petStageLabel, "EXIA TRANS-AM");
       lv_obj_set_style_text_color(petStageLabel, CYBER_COLOR_MAGENTA, 0);
       break;
     default:
-      lv_label_set_text(petStageLabel, "AI: 404 UNIT WRECK");
+      lv_label_set_text(petStageLabel, "404 WRECK");
       lv_obj_set_style_text_color(petStageLabel, CYBER_COLOR_RED, 0);
       break;
   }
@@ -655,23 +703,23 @@ void CyberUI::tickAnimation() {
   animOffset++;
   drawSpriteOnCanvas(currentStage < 0 ? 3 : currentStage);
 
-  // Update Local NTP Clock on Tab 1 ([CHRONO])
+  // Update Local NTP Clock on Tab 1 ([CHRONO]) with pure ASCII separator
   struct tm timeinfo;
   if (getLocalTime(&timeinfo, 10)) {
     static const char* days[] = {"SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"};
     static const char* months[] = {"JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"};
     char dBuf[36];
-    snprintf(dBuf, sizeof(dBuf), "%s · %s %02d // CST", days[timeinfo.tm_wday], months[timeinfo.tm_mon], timeinfo.tm_mday);
+    snprintf(dBuf, sizeof(dBuf), "%s - %s %02d // CST", days[timeinfo.tm_wday], months[timeinfo.tm_mon], timeinfo.tm_mday);
     lv_label_set_text(chronoDateLabel, dBuf);
 
     char tBuf[24];
     char sep = (animOffset % 2 == 0) ? ':' : ' ';
-    snprintf(tBuf, sizeof(tBuf), "%02d %c %02d : %02d", timeinfo.tm_hour, sep, timeinfo.tm_min, timeinfo.tm_sec);
+    snprintf(tBuf, sizeof(tBuf), "%02d%c%02d : %02d", timeinfo.tm_hour, sep, timeinfo.tm_min, timeinfo.tm_sec);
     lv_label_set_text(chronoTimeLabel, tBuf);
   } else {
     unsigned long s = millis() / 1000;
     char tBuf[24];
-    snprintf(tBuf, sizeof(tBuf), "%02lu : %02lu : %02lu", (s / 3600) % 24, (s / 60) % 60, s % 60);
+    snprintf(tBuf, sizeof(tBuf), "%02lu:%02lu : %02lu", (s / 3600) % 24, (s / 60) % 60, s % 60);
     lv_label_set_text(chronoTimeLabel, tBuf);
   }
 }
@@ -680,6 +728,7 @@ void CyberUI::init() {
   currentStage = 3;
   animOffset = 0;
   canvasBuffer = nullptr;
+  haroBuffer = nullptr;
   createStyles();
   createHeader();
   createTabview();
@@ -724,14 +773,20 @@ void CyberUI::update(const DigiviceTelemetry& data) {
   lv_label_set_text(chronoRamVal, buf);
 
   if (data.circuitBreakerTripped) {
+    lv_label_set_text(chronoHaroLabel, "HARO: ALERT!");
+    lv_obj_set_style_text_color(chronoHaroLabel, CYBER_COLOR_RED, 0);
     lv_label_set_text(petStatusLabel, "BREAKER TRIPPED // HALTED");
     lv_obj_set_style_text_color(petStatusLabel, CYBER_COLOR_RED, 0);
   } else if (data.missionActive) {
-    snprintf(buf, sizeof(buf), "HARO: TICKET #%d ACTIVE!", data.missionTicketId);
+    lv_label_set_text(chronoHaroLabel, "HARO: TICKET IN!");
+    lv_obj_set_style_text_color(chronoHaroLabel, CYBER_COLOR_GREEN, 0);
+    snprintf(buf, sizeof(buf), "#%d %s // GATES ACTIVE", data.missionTicketId, data.missionProtocol.c_str());
     lv_label_set_text(petStatusLabel, buf);
     lv_obj_set_style_text_color(petStatusLabel, CYBER_COLOR_GREEN, 0);
   } else {
-    lv_label_set_text(petStatusLabel, data.serverOnline ? "HARO: STANDBY // POLLER OK" : "HARO: NODE UNREACHABLE");
+    lv_label_set_text(chronoHaroLabel, data.serverOnline ? "HARO: SYNCED" : "HARO: OFFLINE");
+    lv_obj_set_style_text_color(chronoHaroLabel, data.serverOnline ? CYBER_COLOR_GREEN : CYBER_COLOR_RED, 0);
+    lv_label_set_text(petStatusLabel, data.serverOnline ? "* K-2SO STANDBY // POLLER OK" : "! K-2SO NODE UNREACHABLE");
     lv_obj_set_style_text_color(petStatusLabel, data.serverOnline ? CYBER_COLOR_CYAN : CYBER_COLOR_RED, 0);
   }
 

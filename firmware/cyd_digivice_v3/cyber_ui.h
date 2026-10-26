@@ -66,8 +66,10 @@ private:
 
   // Tab 1: Chrono + AI Pet Split-Runway
   lv_obj_t* petCanvas;
+  lv_obj_t* haroCanvas;
   lv_obj_t* chronoDateLabel;
   lv_obj_t* chronoTimeLabel;
+  lv_obj_t* chronoHaroLabel;
   lv_obj_t* chronoCpuBar;
   lv_obj_t* chronoCpuVal;
   lv_obj_t* chronoRamBar;
@@ -77,6 +79,7 @@ private:
   lv_obj_t* petEnergyBar;
   lv_obj_t* petEnergyVal;
   lv_color_t* canvasBuffer;
+  lv_color_t* haroBuffer;
 
   // Tab 2: Tactical Mission
   lv_obj_t* tacMissionLabel;
