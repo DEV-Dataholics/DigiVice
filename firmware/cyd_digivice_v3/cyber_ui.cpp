@@ -4,6 +4,7 @@
 #include <time.h>
 
 extern void triggerGundamCutscene(uint8_t fxType, int fromS, int toS);
+extern void enterConferenceBadgeMode();
 
 CyberUI cyberUI;
 
@@ -71,6 +72,11 @@ static void btn_evo_cb(lv_event_t * e) {
   uint8_t fx = 4 + (nextBootIdx % 3); // Cycles 4 (Editorial B), 5 (Mecha A), 6 (Haro C)
   nextBootIdx++;
   triggerGundamCutscene(fx, 0, 0);
+}
+
+static void btn_badge_cb(lv_event_t * e) {
+  soundFx.playEvolutionArpeggio();
+  enterConferenceBadgeMode();
 }
 
 void CyberUI::setBacklightCallback(void (*cb)(int)) { onBacklightChange = cb; }
@@ -144,6 +150,20 @@ void CyberUI::createHeader() {
   lv_label_set_text(headerLabelHost, "[*] K-2SO: CONNECTING");
   lv_obj_set_style_text_color(headerLabelHost, CYBER_COLOR_AMBER, 0);
   lv_obj_align(headerLabelHost, LV_ALIGN_LEFT_MID, -6, 0);
+
+  // Center-Right Quick Conference Badge Mode Pill Button
+  lv_obj_t* btnBadgeHdr = lv_btn_create(header);
+  lv_obj_set_size(btnBadgeHdr, 64, 18);
+  lv_obj_align(btnBadgeHdr, LV_ALIGN_CENTER, 22, 0);
+  lv_obj_set_style_bg_color(btnBadgeHdr, lv_color_hex(0x2A1205), 0);
+  lv_obj_set_style_border_color(btnBadgeHdr, CYBER_COLOR_AMBER, 0);
+  lv_obj_set_style_border_width(btnBadgeHdr, 1, 0);
+  lv_obj_set_style_radius(btnBadgeHdr, 3, 0);
+  lv_obj_add_event_cb(btnBadgeHdr, btn_badge_cb, LV_EVENT_CLICKED, NULL);
+  lv_obj_t* lblBadgeHdr = lv_label_create(btnBadgeHdr);
+  lv_label_set_text(lblBadgeHdr, "[BADGE]");
+  lv_obj_set_style_text_color(lblBadgeHdr, CYBER_COLOR_AMBER, 0);
+  lv_obj_center(lblBadgeHdr);
 
   headerLabelWifi = lv_label_create(header);
   lv_label_set_text(headerLabelWifi, "WIFI: --");
@@ -536,15 +556,29 @@ void CyberUI::buildDeckTab(lv_obj_t* parent) {
   lv_obj_set_style_text_color(labelLdrVal, CYBER_COLOR_GREEN, 0);
   lv_obj_align(labelLdrVal, LV_ALIGN_TOP_RIGHT, -8, 100);
 
-  // Manual HTTP Poll Button
+  // Bottom Row: Conference Badge Mode & Manual HTTP Poll Buttons
+  lv_obj_t* btnBadge = lv_btn_create(parent);
+  lv_obj_set_size(btnBadge, 146, 28);
+  lv_obj_align(btnBadge, LV_ALIGN_BOTTOM_LEFT, 6, -4);
+  lv_obj_set_style_bg_color(btnBadge, lv_color_hex(0x2A1205), 0);
+  lv_obj_set_style_border_color(btnBadge, CYBER_COLOR_AMBER, 0);
+  lv_obj_set_style_border_width(btnBadge, 1, 0);
+  lv_obj_set_style_radius(btnBadge, 4, 0);
+  lv_obj_add_event_cb(btnBadge, btn_badge_cb, LV_EVENT_CLICKED, NULL);
+
+  lv_obj_t* lblBadge = lv_label_create(btnBadge);
+  lv_label_set_text(lblBadge, "[ LANYARD BADGE ]");
+  lv_obj_set_style_text_color(lblBadge, CYBER_COLOR_AMBER, 0);
+  lv_obj_center(lblBadge);
+
   lv_obj_t* btnPoll = lv_btn_create(parent);
-  lv_obj_set_size(btnPoll, 298, 28);
-  lv_obj_align(btnPoll, LV_ALIGN_BOTTOM_MID, 0, -4);
+  lv_obj_set_size(btnPoll, 146, 28);
+  lv_obj_align(btnPoll, LV_ALIGN_BOTTOM_RIGHT, -6, -4);
   lv_obj_add_style(btnPoll, &styleNeonBtn, 0);
   lv_obj_add_event_cb(btnPoll, btn_poll_cb, LV_EVENT_CLICKED, NULL);
 
   lv_obj_t* lblPoll = lv_label_create(btnPoll);
-  lv_label_set_text(lblPoll, "[ RE-POLL K-2SO TELEMETRY NOW ]");
+  lv_label_set_text(lblPoll, "[ RE-POLL K-2SO ]");
   lv_obj_center(lblPoll);
 }
 

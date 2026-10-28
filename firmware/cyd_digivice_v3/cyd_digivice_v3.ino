@@ -18,6 +18,7 @@
 #define RGB_LED_G      16    // Active LOW
 #define RGB_LED_B      17    // Active LOW
 #define LDR_PIN        34    // Analog Ambient Light Sensor
+#define BOOT_BTN_PIN    0    // Physical BOOT Button on back (Active LOW)
 
 // Network & Host Settings
 const char* WIFI_SSID     = "Monkeyskull2";
@@ -50,6 +51,14 @@ int prevStage = -1;
 bool prevMissionActive = false;
 int prevTicketId = 0;
 bool prevCircuitBreaker = false;
+
+// Conference Lanyard Badge Mode State (240x320 Vertical Portrait, USB Port UP)
+bool conferenceBadgeMode = false;
+bool badgeHoldCto = false;
+uint8_t badgeStyle = 0;      // 0 = Docking Emblem VIP Pass, 1 = Mecha Hatch Split-Reveal
+uint16_t badgeTick = 0;
+int16_t badgePrevPhase = -1;
+unsigned long lastBadgeInputMs = 0;
 
 // ============================================================================
 // LVGL Driver Callbacks (LVGL 9.x Native)
@@ -534,6 +543,265 @@ void triggerGundamCutscene(uint8_t fxType, int fromS, int toS) {
 }
 
 // ============================================================================
+// 240x320 Vertical Portrait Conference Badge Engine (USB Port Pointing UP)
+// Shuffles Style 0 (Docking Emblem VIP Pass) & Style 1 (Mecha Hatch Split)
+// ============================================================================
+
+static void drawGfxDataholicsEmblem(int cx, int cy, float s, uint16_t bgCol, uint16_t wingCol, int splitX = 0) {
+  int wOut = (int)(46.0f * s);
+  int wIn  = (int)(6.0f * s);
+  int hOut = (int)(23.0f * s);
+  int hIn  = (int)(30.0f * s);
+  int cOff = (int)(25.0f * s);
+  int cRad = (int)(13.0f * s);
+  int bHalf = max(2, (int)(5.0f * s));
+
+  // Left Wing Polygon
+  int lxO = cx - wOut - splitX;
+  int lxI = cx - wIn - splitX;
+  gfx.fillTriangle(lxO, cy - hOut, lxI, cy - hIn, lxI, cy + hIn, wingCol);
+  gfx.fillTriangle(lxO, cy - hOut, lxI, cy + hIn, lxO, cy + hOut, wingCol);
+
+  // Right Wing Polygon
+  int rxI = cx + wIn + splitX;
+  int rxO = cx + wOut + splitX;
+  gfx.fillTriangle(rxI, cy - hIn, rxO, cy - hOut, rxO, cy + hOut, wingCol);
+  gfx.fillTriangle(rxI, cy - hIn, rxO, cy + hOut, rxI, cy + hIn, wingCol);
+
+  // Negative-Space Inner Circles & Bridge Cutout
+  gfx.fillCircle(cx - cOff - splitX, cy, cRad, bgCol);
+  gfx.fillCircle(cx + cOff + splitX, cy, cRad, bgCol);
+  gfx.fillRect(cx - cOff - splitX, cy - bHalf, (cOff + splitX) * 2, bHalf * 2, bgCol);
+}
+
+void enterConferenceBadgeMode() {
+  conferenceBadgeMode = true;
+  badgeHoldCto = false;
+  badgeStyle = esp_random() % 2; // Start with random style (0 or 1), then shuffle each loop!
+  badgeTick = 0;
+  badgePrevPhase = -1;
+  lastBadgeInputMs = millis() + 400; // Debounce entry touch
+
+  gfx.setRotation(2); // Vertical Portrait 240x320 with USB Port Pointing UP!
+  gfx.fillScreen(gfx.color565(0x06, 0x08, 0x0E));
+}
+
+void exitConferenceBadgeMode() {
+  conferenceBadgeMode = false;
+  badgeHoldCto = false;
+  lastBadgeInputMs = millis() + 400;
+
+  soundFx.playChirp();
+  gfx.setRotation(1); // Restore Horizontal 320x240 Desk Digivice Mode
+  gfx.fillScreen(TFT_BLACK);
+  if (lv_screen_active()) {
+    lv_obj_invalidate(lv_screen_active());
+  }
+}
+
+void renderConferenceBadgeTick() {
+  uint16_t colBg     = gfx.color565(0x06, 0x08, 0x0E);
+  uint16_t colHdr    = gfx.color565(0x11, 0x17, 0x26);
+  uint16_t colCard   = gfx.color565(0x0D, 0x15, 0x26);
+  uint16_t colOrange = gfx.color565(0xFF, 0x73, 0x00);
+  uint16_t colCyan   = gfx.color565(0x00, 0xF0, 0xFF);
+  uint16_t colGold   = gfx.color565(0xFF, 0xDD, 0x00);
+  uint16_t colGreen  = gfx.color565(0x00, 0xFF, 0x88);
+  uint16_t colMint   = gfx.color565(0x66, 0xFF, 0xBB);
+  uint16_t colRed    = gfx.color565(0xFF, 0x2A, 0x55);
+  uint16_t colDim    = gfx.color565(0x73, 0x8A, 0x9C);
+  uint16_t colWhite  = 0xFFFF;
+
+  // 80-tick cycle (~7.2 seconds per full cycle at 90ms/tick):
+  //   0..29  = Act I: Giant Full-Screen Dataholics Emblem + TiRA System
+  //   30..39 = Smooth Transition (Style 0: Emblem glides & docks to top | Style 1: Mecha Hatch splits)
+  //   40..79 = Act II: Giant LUIS MORALES // CTO Executive Card + Animated Haro/Gundam
+  uint16_t t = badgeHoldCto ? (50 + (badgeTick % 20)) : (badgeTick % 80);
+
+  // Shuffle between Style 0 and Style 1 at the start of every cycle!
+  if (!badgeHoldCto && t == 0 && badgeTick > 0) {
+    badgeStyle = (badgeStyle + 1) % 2;
+    badgePrevPhase = -1;
+  }
+
+  int16_t curPhase = (t < 30) ? 0 : ((t < 40) ? 1 : 2);
+
+  gfx.startWrite();
+
+  // Draw Top Lanyard Header Bar once at start of cycle or phase change
+  if (badgePrevPhase == -1) {
+    gfx.fillScreen(colBg);
+    gfx.fillRect(0, 0, 240, 22, colHdr);
+    gfx.fillRect(0, 21, 240, 2, colOrange);
+    gfx.setTextSize(1);
+    gfx.setTextColor(colOrange);
+    gfx.setCursor(8, 7);
+    gfx.print("DATAHOLICS // SOVEREIGN AI");
+    gfx.setTextColor(colGreen);
+    gfx.setCursor(194, 7);
+    gfx.print("VIP-01");
+  }
+
+  if (curPhase == 0) {
+    // =========================================================================
+    // ACT I: FULL-SCREEN DATAHOLICS EMBLEM IGNITION (Ticks 0..29)
+    // =========================================================================
+    if (badgePrevPhase != 0) {
+      gfx.fillRect(0, 24, 240, 290, colBg);
+
+      // Static Typography below Giant Emblem
+      gfx.setTextSize(3);
+      gfx.setTextColor(colWhite);
+      gfx.setCursor(30, 206);
+      gfx.print("DATAHOLICS");
+
+      gfx.fillRect(16, 242, 208, 28, gfx.color565(0x0D, 0x1E, 0x2E));
+      gfx.drawRect(16, 242, 208, 28, colCyan);
+      gfx.setTextSize(1);
+      gfx.setTextColor(colCyan);
+      gfx.setCursor(38, 252);
+      gfx.print("TiRA AUTONOMOUS SYSTEM");
+
+      gfx.setTextColor(colDim);
+      gfx.setCursor(22, 284);
+      gfx.print(">>> EXECUTIVE ID // CLEARANCE 0 <<<");
+    }
+
+    // Update Emblem Zone only during wing slide-in (t <= 8) or flash (t == 8, 9)
+    if (t <= 10 || badgePrevPhase != 0) {
+      gfx.fillRect(14, 58, 212, 134, colBg);
+      gfx.drawRect(18, 62, 204, 126, (t % 2 == 0) ? colOrange : colCyan);
+      int splitX = (t < 7) ? (7 - t) * 7 : 0;
+      uint16_t wCol = (t == 7 || t == 8) ? colWhite : colOrange;
+      drawGfxDataholicsEmblem(120, 125, 1.75f, colBg, wCol, splitX);
+    }
+
+  } else if (curPhase == 1) {
+    // =========================================================================
+    // TRANSITION PHASE (Ticks 30..39): DOCKING EMBLEM OR MECHA HATCH SPLIT
+    // =========================================================================
+    int step = t - 30; // 0..9
+    gfx.fillRect(0, 24, 240, 290, colBg);
+
+    if (badgeStyle == 0) {
+      // Style 0: Dataholics Emblem smoothly glides upward from y=125 (scale 1.75) to y=58 (scale 1.0)
+      float p = (float)(step + 1) / 10.0f;
+      int curY = 125 - (int)(p * 67.0f);
+      float curS = 1.75f - p * 0.75f;
+      drawGfxDataholicsEmblem(120, curY, curS, colBg, colOrange, 0);
+
+      // Slide up the LUIS MORALES card outline from the bottom
+      int cardY = 310 - (int)(p * 186.0f);
+      gfx.drawRect(10, cardY, 220, 76, colCyan);
+    } else {
+      // Style 1: Mecha Hatch Blast Doors split open vertically!
+      int splitY = (step + 1) * 12;
+      int topDoorH = max(0, 140 - splitY);
+      if (topDoorH > 0) {
+        gfx.fillRect(0, 24, 240, topDoorH, colHdr);
+        gfx.fillRect(0, 24 + topDoorH - 3, 240, 3, colOrange);
+      }
+      int botDoorY = min(312, 168 + splitY);
+      int botDoorH = max(0, 312 - botDoorY);
+      if (botDoorH > 0) {
+        gfx.fillRect(0, botDoorY, 240, botDoorH, colHdr);
+        gfx.fillRect(0, botDoorY, 240, 3, colOrange);
+      }
+      gfx.drawRect(14, 160 - splitY / 2, 212, splitY, colRed);
+    }
+
+  } else {
+    // =========================================================================
+    // ACT II: FULL-SCREEN LUIS MORALES // CTO MONOLITH (Ticks 40..79)
+    // =========================================================================
+    if (badgePrevPhase != 2) {
+      gfx.fillRect(0, 24, 240, 290, colBg);
+
+      // 1. Top Docked Dataholics Emblem & Title
+      drawGfxDataholicsEmblem(120, 58, 1.0f, colBg, colOrange, 0);
+      gfx.setTextSize(1);
+      gfx.setTextColor(colWhite);
+      gfx.setCursor(54, 96);
+      gfx.print("D A T A H O L I C S");
+
+      // Divider with glowing cyan nodes
+      gfx.fillRect(14, 108, 212, 2, gfx.color565(0x1E, 0x2D, 0x4A));
+      gfx.fillRect(14, 107, 14, 4, colCyan);
+      gfx.fillRect(212, 107, 14, 4, colCyan);
+
+      // 2. Giant Executive Name Monolith (Readable from 4 meters away!)
+      gfx.fillRect(10, 116, 220, 82, colCard);
+      gfx.drawRect(10, 116, 220, 82, colCyan);
+      gfx.drawRect(11, 117, 218, 80, colCyan);
+      gfx.fillRect(10, 116, 18, 4, colOrange);
+      gfx.fillRect(212, 116, 18, 4, colOrange);
+
+      gfx.setTextSize(3);
+      gfx.setTextColor(colWhite);
+      gfx.setCursor(84, 126);
+      gfx.print("LUIS");
+
+      gfx.setTextSize(3);
+      gfx.setTextColor(colCyan);
+      gfx.setCursor(57, 162);
+      gfx.print("MORALES");
+
+      // 3. Bottom TiRA System + Animated Mascot Frame
+      gfx.fillRect(10, 248, 220, 60, gfx.color565(0x0A, 0x16, 0x24));
+      gfx.drawRect(10, 248, 220, 60, colGreen);
+
+      gfx.setTextSize(1);
+      gfx.setTextColor(colGreen);
+      gfx.setCursor(74, 260);
+      gfx.print("TiRA AI ARCHITECT");
+      gfx.setTextColor(colMint);
+      gfx.setCursor(74, 276);
+      gfx.print("SOVEREIGN // K-2SO");
+      gfx.setTextColor(colGold);
+      gfx.setCursor(74, 292);
+      gfx.print(badgeHoldCto ? "[LOCKED: CTO CARD]" : "[TAP: LOCK / EXIT]");
+    }
+
+    // Dynamic Update 1: Pulsing Orange/Gold CTO Banner (y = 204..240)
+    bool pulse = ((t / 3) % 2 == 0);
+    if (t == 40 || (t % 3 == 0)) {
+      uint16_t ctoBg  = pulse ? colOrange : gfx.color565(0x26, 0x11, 0x05);
+      uint16_t ctoTxt = pulse ? colBg : colGold;
+      gfx.fillRect(10, 204, 220, 38, ctoBg);
+      gfx.drawRect(10, 204, 220, 38, colGold);
+      gfx.drawRect(11, 205, 218, 36, colGold);
+      gfx.setTextSize(3);
+      gfx.setTextColor(ctoTxt);
+      gfx.setCursor(45, 212);
+      gfx.print("* CTO *");
+    }
+
+    // Dynamic Update 2: Animated Haro (Style 0) or Exia Gundam (Style 1) in Bottom-Left Box!
+    gfx.fillRect(14, 252, 54, 52, gfx.color565(0x0A, 0x16, 0x24));
+    if (badgeStyle == 0) {
+      int hb = (t % 2) * 3;
+      drawGfxSpriteScaled(4, t % 2, 16, 256 - hb, 2); // Bouncing Haro!
+    } else {
+      drawGfxSpriteScaled(2, t % 2, 16, 254, 2);      // Gundam Exia Trans-Am!
+    }
+  }
+
+  // Bottom 3px Progress Bar
+  int progW = ((t % 40) * 240) / 39;
+  if (t == 0 || t == 40) gfx.fillRect(0, 316, 240, 4, colBg);
+  gfx.fillRect(0, 316, progW, 4, badgeHoldCto ? colCyan : colOrange);
+
+  gfx.endWrite();
+  badgePrevPhase = curPhase;
+  badgeTick++;
+
+  // Cycle RGB LED Underglow in Orange/Cyan while in Badge Mode
+  bool ledStep = (badgeTick / 6) % 2;
+  if (ledStep) setRgbLed(1, 1, 0); // Orange/Gold
+  else setRgbLed(0, 1, 1);         // Electric Cyan
+}
+
+// ============================================================================
 // Network & Telemetry Poller
 // ============================================================================
 
@@ -658,10 +926,11 @@ void setup() {
   delay(100);
   Serial.println(F("\n[K-2SO] Booting CYD Digivice v3.0 Cyberpunk Edition..."));
 
-  // 1. Setup Onboard RGB LED Pins
+  // 1. Setup Onboard RGB LED Pins & Physical BOOT Button (GPIO 0)
   pinMode(RGB_LED_R, OUTPUT);
   pinMode(RGB_LED_G, OUTPUT);
   pinMode(RGB_LED_B, OUTPUT);
+  pinMode(BOOT_BTN_PIN, INPUT_PULLUP);
   setRgbLed(0, 0, 1); // Booting Blue
 
   // 2. Setup Audio Synth
@@ -737,12 +1006,57 @@ void setup() {
 }
 
 void loop() {
+  unsigned long now = millis();
+
+  // 0. Check Physical BOOT Button on Back (GPIO 0) to Toggle Conference Badge Mode!
+  static bool prevBootBtn = HIGH;
+  bool curBootBtn = digitalRead(BOOT_BTN_PIN);
+  if (curBootBtn == LOW && prevBootBtn == HIGH && now > lastBadgeInputMs) {
+    lastBadgeInputMs = now + 350;
+    if (!conferenceBadgeMode) {
+      soundFx.playEvolutionArpeggio();
+      enterConferenceBadgeMode();
+    } else {
+      exitConferenceBadgeMode();
+    }
+  }
+  prevBootBtn = curBootBtn;
+
+  // 0.5 If in Vertical Conference Lanyard Badge Mode (240x320, USB Port UP):
+  if (conferenceBadgeMode) {
+    // Check touchscreen tap: 1st tap = Lock/Hold on LUIS MORALES CTO card; 2nd tap = Exit to Desk Mode!
+    uint16_t tx, ty;
+    static bool wasTouched = false;
+    bool isTouched = gfx.getTouch(&tx, &ty);
+    if (isTouched && !wasTouched && now > lastBadgeInputMs) {
+      lastBadgeInputMs = now + 400;
+      if (!badgeHoldCto) {
+        soundFx.playTap();
+        badgeHoldCto = true;
+        badgePrevPhase = -1; // Force clean redraw of locked CTO card
+      } else {
+        exitConferenceBadgeMode();
+        wasTouched = isTouched;
+        return;
+      }
+    }
+    wasTouched = isTouched;
+
+    // Render 240x320 Vertical Badge Frame at 90ms cadence (~11 FPS zero-flicker)
+    static unsigned long lastBadgeFrame = 0;
+    if (now - lastBadgeFrame >= 90) {
+      lastBadgeFrame = now;
+      renderConferenceBadgeTick();
+    }
+    delay(5);
+    return;
+  }
+
   // 1. Tick LVGL Engine
   lv_timer_handler();
 
   // 2. Tick Multi-Color Pet Sprite & Sanctuary Animation (350ms cadence)
   static unsigned long lastAnimTick = 0;
-  unsigned long now = millis();
   if (now - lastAnimTick >= 350) {
     lastAnimTick = now;
     cyberUI.tickAnimation();

@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CYD 240x320 Vertical Conference Badge Studio — Luis Morales CTO</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --background: oklch(0.13 0.02 260);
+      --foreground: oklch(0.96 0.01 250);
+      --card: oklch(0.17 0.025 260);
+      --border: oklch(0.28 0.03 260);
+      --muted-foreground: oklch(0.70 0.02 250);
+    }
+    body {
+      background: transparent;
+      color: var(--foreground);
+      font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+      margin: 0;
+      padding: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="max-w-4xl mx-auto rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-2xl">
+    <!-- Top Header -->
+    <div class="flex flex-wrap items-center justify-between gap-2 pb-3 mb-4 border-b border-[var(--border)]">
+      <div>
+        <h2 class="text-base font-bold tracking-wide text-orange-400 flex items-center gap-2">
+          <span>🪪</span>
+          <span>CYD 240×320 Vertical Conference Badge // USB Port UP</span>
+        </h2>
+        <p class="text-xs text-[var(--muted-foreground)] mt-0.5">
+          Full-screen looping lanyard badge: <strong class="text-white">Dataholics Emblem</strong> ➔ <strong class="text-amber-300">LUIS MORALES // CTO</strong>
+        </p>
+      </div>
+      <div class="flex items-center gap-2 text-xs">
+        <span class="px-2 py-0.5 rounded font-mono font-semibold bg-orange-500/20 text-orange-300 border border-orange-500/40">
+          ROTATION: PORTRAIT (240x320)
+        </span>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
+      <!-- Left: Vertical Lanyard CYD Hardware Frame (6 cols) -->
+      <div class="md:col-span-6 flex flex-col items-center">
+        <!-- Lanyard Strap & Clip Simulation (Top = USB Port UP) -->
+        <div class="flex flex-col items-center -mb-1 z-10">
+          <div class="w-12 h-5 border-x-4 border-orange-500/60"></div>
+          <div class="px-3 py-0.5 rounded-t bg-neutral-800 border border-neutral-600 text-[10px] font-mono text-amber-300">
+            🔌 USB-C PORT (TOP EDGE)
+          </div>
+        </div>
+
+        <!-- Yellow CYD PCB in Vertical Orientation -->
+        <div id="cydPcb" class="relative p-3.5 rounded-2xl bg-amber-400/10 border-2 border-amber-400/70 shadow-[0_0_32px_rgba(255,115,0,0.3)]">
+          <!-- Top Mounting Holes -->
+          <div class="flex justify-between items-center mb-1.5 px-1 text-[10px] font-mono text-amber-300/80">
+            <span>● M3</span>
+            <span id="phaseIndicator" class="text-orange-400 font-bold">ACT I: DATAHOLICS</span>
+            <span>M3 ●</span>
+          </div>
+
+          <!-- 240x320 Vertical TFT Display Canvas (Scaled 1.25x to 300x400 for crisp desktop preview) -->
+          <div class="relative rounded overflow-hidden border-2 border-cyan-500/40 bg-black shadow-inner">
+            <canvas id="badgeCanvas" width="240" height="320" class="block cursor-pointer" style="width: 276px; height: 368px; image-rendering: pixelated;"></canvas>
+          </div>
+
+          <!-- Bottom Mounting Holes -->
+          <div class="flex justify-between items-center mt-1.5 px-1 text-[10px] font-mono text-neutral-400">
+            <span>● M3</span>
+            <span class="text-cyan-400">240×320 FULL-BLEED</span>
+            <span>M3 ●</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Fabrizzio's 3 Couture Badge Styles & Controls (6 cols) -->
+      <div class="md:col-span-6 flex flex-col gap-3 bg-[var(--background)] p-4 rounded-xl border border-[var(--border)]">
+        <div class="text-xs font-semibold uppercase tracking-wider text-orange-400">
+          ✨ Choose Your Conference Runway Style
+        </div>
+
+        <button data-style="0" class="style-btn text-left p-3 rounded-lg border border-orange-400 bg-orange-500/10 transition cursor-pointer">
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-bold text-orange-300">Style 1: "The Docking Emblem VIP Pass"</span>
+            <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-300">RECOMMENDED</span>
+          </div>
+          <p class="text-xs text-[var(--muted-foreground)] mt-1">
+            <strong>Act I:</strong> Giant full-screen <strong>Dataholics Emblem</strong> ignites with laser scanlines.<br>
+            <strong>Transition:</strong> The emblem smoothly <em>glides upward and docks</em> at the top of the card while a giant high-contrast <strong>LUIS MORALES</strong> &amp; blazing neon <strong>[ C T O ]</strong> monolith locks in below!
+          </p>
+        </button>
+
+        <button data-style="1" class="style-btn text-left p-3 rounded-lg border border-[var(--border)] hover:border-cyan-400 transition cursor-pointer">
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-bold text-cyan-300">Style 2: "The Mecha Hatch Split-Reveal"</span>
+            <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300">CYBERPUNK</span>
+          </div>
+          <p class="text-xs text-[var(--muted-foreground)] mt-1">
+            <strong>Act I:</strong> Giant <strong>Dataholics Emblem</strong> in the center.<br>
+            <strong>Transition:</strong> The two orange wings of the Dataholics logo literally <em>split apart vertically</em> (top &amp; bottom) like a Gundam cockpit blast door, unveiling <strong>LUIS MORALES // CTO</strong> &amp; animated <strong>Gundam Exia / Haro</strong> inside!
+          </p>
+        </button>
+
+        <button data-style="2" class="style-btn text-left p-3 rounded-lg border border-[var(--border)] hover:border-emerald-400 transition cursor-pointer">
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-bold text-emerald-300">Style 3: "Shuffle All + Live Telemetry Badge"</span>
+            <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300">DYNAMIC</span>
+          </div>
+          <p class="text-xs text-[var(--muted-foreground)] mt-1">
+            Cycles smoothly between the <strong>Full-Screen Dataholics Emblem</strong>, the <strong>VIP LUIS MORALES CTO</strong> card, and a <strong>TiRA System / Haro</strong> badge!
+          </p>
+        </button>
+
+        <!-- Timeline Scrubber / Hold Controls -->
+        <div class="pt-2 border-t border-[var(--border)] flex flex-col gap-2">
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-[var(--muted-foreground)]">Animation Loop Control:</span>
+            <div class="flex gap-1.5">
+              <button id="btnHoldLogo" class="px-2 py-1 rounded border border-[var(--border)] hover:border-orange-400 font-mono text-xs cursor-pointer">Hold Logo</button>
+              <button id="btnHoldCto" class="px-2 py-1 rounded border border-[var(--border)] hover:border-cyan-400 font-mono text-xs cursor-pointer">Hold CTO Card</button>
+              <button id="btnAutoLoop" class="px-2 py-1 rounded bg-orange-500/20 text-orange-300 border border-orange-400 font-mono text-xs cursor-pointer">Auto-Loop</button>
+            </div>
+          </div>
+          <div class="text-[11px] text-[var(--muted-foreground)] font-mono">
+            💡 Tip: On the physical board, tapping the screen can also freeze on your CTO card or switch back to Desk Digivice mode!
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('badgeCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const PALETTE = {
+      '1': '#05070B', '2': '#005533', '3': '#00CC66', '4': '#66FFBB',
+      '5': '#FFFFFF', '6': '#003888', '7': '#00BBFF', '8': '#88FFFF',
+      '9': '#CC22FF', 'A': '#4A1208', 'B': '#EE1144', 'C': '#FF6600',
+      'D': '#FFDD00', 'E': '#3A4659', 'F': '#8FA3B8'
+    };
+
+    const HARO = [
+      [
+        "........................",".......1111111111.......",".....11444444444411.....","....1445544333333341....",
+        "...144554331111113331...","..14331111333333311111..","..14333333333333333321..",".1433311133333333111321.",
+        ".13331BBB13333331BBB121.",".13331B5B13333331B5B121.",".1333311133333333111321.",".1333333331111113333321.",
+        ".1233333311111111333321.","..12333333333333333321..","..12233333333333333221..","...122233333333332221...",
+        "....1122222222222211....","......111111111111......","........................","........................",
+        "........................","........................","........................","........................"
+      ],
+      [
+        ".1111..............1111.","1444411..........1144441","145544411111111114444321",".1433111444444441113321.",
+        "..111.1445544333341.111.",".....143333333333321....","....14333111331113321...","....13331B5B11B5B1321...",
+        "....13331BBB11BBB1321...","....13333111331113321...","....13333311111133321...","....123331BBBBBB13321...",
+        ".....123331111113321....","......1223333333221.....",".......11222222211......",".........1111111........",
+        "........................","........................","........................","........................",
+        "........................","........................","........................","........................"
+      ]
+    ];
+
+    const GUNDAM_EXIA = [
+      "9D5........44........5D9",".9DD1.....1451.....1DD9.","..91DD1...1441...1DD19..",".4..11DD119BB911DD11..4.",
+      "..4..1BDDD9559DDDB1..4..","...91BBB1DDDDDD1BBB19...","...1BB911114411119BB1...","...1B91145511554119B1...",
+      "...199114431134411991...",".9911AA1195BB5911AA1199.","99BBBB111934439111BBBB99","9BB599B1AA34543AA1B995BB",
+      "1B91111AA345543AA11119B1","1441.91AA345543AA19.1441",".141..1AAA3443AAA1..141.",".141..11AA9BB9AA11..141.",
+      ".151.1BB91BBBB19BB1.151.","..111BB91.1AA1.19BB111..","....1991..1111..1991....","....111..........111....",
+      "........................","........................","........................","........................"
+    ];
+
+    function drawMatrix(mat, ox, oy, scale) {
+      for (let r = 0; r < 24; r++) {
+        const row = mat[r];
+        for (let c = 0; c < 24; c++) {
+          const ch = row[c];
+          if (ch && ch !== '.') {
+            ctx.fillStyle = PALETTE[ch] || '#00FF88';
+            ctx.fillRect(ox + c * scale, oy + r * scale, scale, scale);
+          }
+        }
+      }
+    }
+
+    // Draw exact scalable Dataholics Split-Wing Emblem at (cx, cy) with scale s (1.0 = 92x60) and optional wing separation
+    function drawDataholicsEmblem(cx, cy, s = 1.0, bgHex = '#07090E', wingColor = '#FF7300', splitX = 0) {
+      ctx.save();
+      ctx.fillStyle = wingColor;
+
+      // Left Wing
+      ctx.beginPath();
+      ctx.moveTo(cx - 46 * s - splitX, cy - 23 * s);
+      ctx.lineTo(cx - 6 * s - splitX,  cy - 30 * s);
+      ctx.lineTo(cx - 6 * s - splitX,  cy + 30 * s);
+      ctx.lineTo(cx - 46 * s - splitX, cy + 23 * s);
+      ctx.closePath();
+      ctx.fill();
+
+      // Right Wing
+      ctx.beginPath();
+      ctx.moveTo(cx + 6 * s + splitX,  cy - 30 * s);
+      ctx.lineTo(cx + 46 * s + splitX, cy - 23 * s);
+      ctx.lineTo(cx + 46 * s + splitX, cy + 23 * s);
+      ctx.lineTo(cx + 6 * s + splitX,  cy + 30 * s);
+      ctx.closePath();
+      ctx.fill();
+
+      // Negative-Space Inner Circles & Bridge
+      ctx.fillStyle = bgHex;
+      ctx.beginPath();
+      ctx.arc(cx - 25 * s - splitX, cy, 13 * s, 0, Math.PI * 2);
+      ctx.arc(cx + 25 * s + splitX, cy, 13 * s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillRect(cx - 25 * s - splitX, cy - 5 * s, 50 * s + splitX * 2, 10 * s);
+      ctx.restore();
+    }
+
+    let badgeStyle = 0;
+    let tick = 0; // 0..99 loop cycle
+    let holdMode = 'AUTO'; // 'AUTO', 'LOGO', 'CTO'
+
+    function renderBadge() {
+      // Determine effective tick in 100-tick cycle:
+      // 0..34   = Act I: Full-Screen Dataholics Logo Animation
+      // 35..49  = Morph / Transition (Logo docks or splits open)
+      // 50..94  = Act II: Full-Screen LUIS MORALES // CTO Badge
+      // 95..99  = Smooth transition back
+      let t = tick % 100;
+      if (holdMode === 'LOGO') t = 18 + (tick % 10);
+      else if (holdMode === 'CTO') t = 65 + (tick % 16);
+
+      const ind = document.getElementById('phaseIndicator');
+      if (t < 35) {
+        ind.textContent = 'ACT I: DATAHOLICS LOGO';
+        ind.className = 'text-orange-400 font-bold';
+      } else if (t < 50) {
+        ind.textContent = 'MORPH: DOCKING TO CTO';
+        ind.className = 'text-amber-300 font-bold';
+      } else {
+        ind.textContent = 'ACT II: LUIS MORALES CTO';
+        ind.className = 'text-cyan-400 font-bold';
+      }
+
+      // Base Background
+      ctx.fillStyle = '#06080E';
+      ctx.fillRect(0, 0, 240, 320);
+
+      // Subtle Blueprint Grid
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < 240; x += 24) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 320); ctx.stroke();
+      }
+      for (let y = 0; y < 320; y += 24) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(240, y); ctx.stroke();
+      }
+
+      // Top Lanyard Header Strip
+      ctx.fillStyle = '#111726';
+      ctx.fillRect(0, 0, 240, 22);
+      ctx.fillStyle = '#FF7300';
+      ctx.fillRect(0, 21, 240, 2);
+      ctx.font = 'bold 9px monospace';
+      ctx.fillStyle = '#FF7300';
+      ctx.fillText('DATAHOLICS // SOVEREIGN AI', 10, 14);
+      ctx.fillStyle = '#00FF88';
+      ctx.fillText('VIP-01', 194, 14);
+
+      if (badgeStyle === 0 || badgeStyle === 2) {
+        // =====================================================================
+        // STYLE 1: THE DOCKING EMBLEM VIP PASS
+        // =====================================================================
+        // Calculate Logo Y, Scale, and Wing Slide
+        let logoY = 128;
+        let logoScale = 1.85;
+        let wingSplit = 0;
+
+        if (t < 10) {
+          // Wings sliding in from edges
+          wingSplit = (10 - t) * 8;
+        } else if (t >= 35 && t < 50) {
+          // Smoothly dock upward from y=128 (scale 1.85) to y=60 (scale 1.05)
+          const p = (t - 35) / 15;
+          logoY = 128 - p * 68;
+          logoScale = 1.85 - p * 0.80;
+        } else if (t >= 50) {
+          logoY = 60;
+          logoScale = 1.05;
+        }
+
+        // Draw Ambient Glow Ring behind Logo in Act I
+        if (t < 38) {
+          ctx.strokeStyle = (t % 4 < 2) ? 'rgba(255, 115, 0, 0.35)' : 'rgba(0, 240, 255, 0.25)';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(20, 62, 200, 132);
+        }
+
+        // Draw the Dataholics Emblem
+        const flashWhite = (t === 10 || t === 11);
+        drawDataholicsEmblem(120, logoY, logoScale, '#06080E', flashWhite ? '#FFFFFF' : '#FF7300', wingSplit);
+
+        if (t < 38) {
+          // ACT I: Full-Screen Brand Showcase below Giant Emblem
+          // Laser scanline sweep
+          const scanY = 66 + ((t * 9) % 124);
+          ctx.fillStyle = 'rgba(255, 221, 0, 0.5)';
+          ctx.fillRect(28, scanY, 184, 2);
+
+          ctx.font = 'bold 22px sans-serif';
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillText('DATAHOLICS', 46, 224);
+
+          ctx.fillStyle = '#0D1E2E';
+          ctx.fillRect(22, 240, 196, 28);
+          ctx.strokeStyle = '#00F0FF';
+          ctx.lineWidth = 1.5;
+          ctx.strokeRect(22.5, 240.5, 195, 27);
+          ctx.font = 'bold 12px monospace';
+          ctx.fillStyle = '#00F0FF';
+          ctx.fillText('TiRA AUTONOMOUS SYSTEM', 40, 258);
+
+          ctx.font = '10px monospace';
+          ctx.fillStyle = '#738A9C';
+          ctx.fillText('>>> INITIALIZING EXECUTIVE ID <<<', 22, 290);
+        } else {
+          // ACT II: Docked Logo at Top + Giant LUIS MORALES // CTO Monolith!
+          ctx.font = 'bold 12px sans-serif';
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillText('D A T A H O L I C S', 58, 106);
+
+          // Divider with glowing cyan nodes
+          ctx.fillStyle = '#1E2D4A';
+          ctx.fillRect(16, 114, 208, 2);
+          ctx.fillStyle = '#00F0FF';
+          ctx.fillRect(16, 113, 12, 4);
+          ctx.fillRect(212, 113, 12, 4);
+
+          // Giant Executive Name Card (Full-Width High Visibility!)
+          ctx.fillStyle = '#0D1526';
+          ctx.fillRect(10, 124, 220, 78);
+          ctx.strokeStyle = '#00F0FF';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(11, 125, 218, 76);
+
+          // Corner Accents
+          ctx.fillStyle = '#FF7300';
+          ctx.fillRect(10, 124, 16, 4);
+          ctx.fillRect(214, 124, 16, 4);
+
+          ctx.font = 'bold 28px sans-serif';
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillText('LUIS', 86, 156);
+          ctx.font = 'bold 30px sans-serif';
+          ctx.fillStyle = '#00F0FF';
+          ctx.fillText('MORALES', 44, 190);
+
+          // Blazing Orange/Gold CTO Pill Banner
+          const pulseCto = (t % 4 < 2);
+          ctx.fillStyle = pulseCto ? '#FF7300' : '#261105';
+          ctx.fillRect(10, 210, 220, 38);
+          ctx.strokeStyle = '#FFDD00';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(11, 211, 218, 36);
+
+          ctx.font = 'bold 22px monospace';
+          ctx.fillStyle = pulseCto ? '#05070B' : '#FFDD00';
+          ctx.fillText('★  C T O  ★', 48, 236);
+
+          // Bottom Section: TiRA System + Bouncing Haro Mascot!
+          ctx.fillStyle = '#0A1929';
+          ctx.fillRect(10, 256, 220, 48);
+          ctx.strokeStyle = '#00FF88';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(10.5, 256.5, 219, 47);
+
+          const hb = (t % 2) * 3;
+          drawMatrix(HARO[t % 2], 16, 256 - hb, 2);
+
+          ctx.font = 'bold 11px monospace';
+          ctx.fillStyle = '#00FF88';
+          ctx.fillText('TiRA AI ARCHITECT', 72, 275);
+          ctx.font = '10px monospace';
+          ctx.fillStyle = '#66FFBB';
+          ctx.fillText('NODE: K-2SO // LEVEL 0', 72, 293);
+        }
+
+      } else if (badgeStyle === 1) {
+        // =====================================================================
+        // STYLE 2: THE MECHA HATCH SPLIT-REVEAL
+        // =====================================================================
+        let splitY = 0;
+        if (t >= 35 && t < 50) {
+          splitY = ((t - 35) / 15) * 115;
+        } else if (t >= 50) {
+          splitY = 115;
+        }
+
+        // Inside the Hatch (Revealed as splitY opens!)
+        if (splitY > 10) {
+          ctx.fillStyle = '#0C1424';
+          ctx.fillRect(10, 56, 220, 216);
+          ctx.strokeStyle = '#FF2A55';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(11, 57, 218, 214);
+
+          ctx.font = 'bold 11px monospace';
+          ctx.fillStyle = '#FF7300';
+          ctx.fillText('D A T A H O L I C S // TiRA OS', 24, 78);
+
+          ctx.font = 'bold 28px sans-serif';
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillText('LUIS', 86, 114);
+          ctx.fillStyle = '#00F0FF';
+          ctx.fillText('MORALES', 46, 146);
+
+          ctx.fillStyle = '#3B0715';
+          ctx.fillRect(22, 158, 196, 32);
+          ctx.strokeStyle = '#FFDD00';
+          ctx.strokeRect(22.5, 158.5, 195, 31);
+          ctx.font = 'bold 18px monospace';
+          ctx.fillStyle = '#FFDD00';
+          ctx.fillText('CHIEF TECH OFFICER', 26, 180);
+
+          // Gundam Exia + Haro at bottom of inside hatch!
+          drawMatrix(GUNDAM_EXIA, 36, 196, 3);
+          drawMatrix(HARO[t % 2], 144, 208 - (t % 2) * 4, 2);
+        }
+
+        // Top & Bottom Blast Doors with Dataholics Emblem halves!
+        if (splitY < 110) {
+          // Top Door
+          ctx.fillStyle = '#07090E';
+          ctx.fillRect(0, 23, 240, 145 - splitY);
+          ctx.fillStyle = '#FF7300';
+          ctx.fillRect(0, 166 - splitY, 240, 3);
+
+          // Bottom Door
+          ctx.fillStyle = '#07090E';
+          ctx.fillRect(0, 168 + splitY, 240, 142 - splitY);
+          ctx.fillStyle = '#FF7300';
+          ctx.fillRect(0, 168 + splitY, 240, 3);
+
+          if (splitY < 20) {
+            drawDataholicsEmblem(120, 145, 1.85, '#07090E', '#FF7300', 0);
+            ctx.font = 'bold 22px sans-serif';
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillText('DATAHOLICS', 46, 232);
+            ctx.font = 'bold 11px monospace';
+            ctx.fillStyle = '#00F0FF';
+            ctx.fillText('[ TiRA AUTONOMOUS SYSTEM ]', 34, 254);
+          }
+        }
+      }
+
+      // Bottom Progress / Activity Bar
+      const progW = Math.round(((t % 50) / 50) * 240);
+      ctx.fillStyle = '#FF7300';
+      ctx.fillRect(0, 316, progW, 4);
+    }
+
+    document.querySelectorAll('.style-btn').forEach(btn => {
+      btn.onclick = () => {
+        badgeStyle = Number(btn.dataset.style);
+        document.querySelectorAll('.style-btn').forEach(b => {
+          b.classList.remove('border-orange-400', 'bg-orange-500/10');
+          b.classList.add('border-[var(--border)]');
+        });
+        btn.classList.remove('border-[var(--border)]');
+        btn.classList.add('border-orange-400', 'bg-orange-500/10');
+        tick = 0;
+        renderBadge();
+      };
+    });
+
+    document.getElementById('btnHoldLogo').onclick = () => { holdMode = 'LOGO'; renderBadge(); };
+    document.getElementById('btnHoldCto').onclick  = () => { holdMode = 'CTO';  renderBadge(); };
+    document.getElementById('btnAutoLoop').onclick = () => { holdMode = 'AUTO'; renderBadge(); };
+
+    setInterval(() => {
+      tick++;
+      renderBadge();
+    }, 90);
+
+    renderBadge();
+  </script>
+</body>
+</html>
