@@ -802,10 +802,16 @@ public:
     _gfx->setTextColor(C_CRIMSON);
     _gfx->drawString(statusText, 90, 120);
 
-    _gfx->drawString("Enroll this MAC in Resolve ServiceDesk", 34, 145);
-    _gfx->drawString("python scratch/enroll_digipet.py <MAC>", 34, 160);
+    _gfx->drawString("Enroll this MAC in Resolve ServiceDesk", 34, 140);
+    _gfx->drawString("python scratch/enroll_digipet.py <MAC>", 34, 154);
+
+    // Wi-Fi Setup Button
+    _gfx->fillRect(30, 172, 260, 26, 0x10A2);
+    _gfx->drawRect(30, 172, 260, 26, C_SOUL_CYAN);
+    _gfx->setTextColor(C_SOUL_CYAN);
+    _gfx->drawString("[ 📡 TAP FOR WI-FI SETUP PORTAL ]", 44, 180);
 
     _gfx->setTextColor(C_SHADOW_FUR);
-    _gfx->drawString("Tap screen to return to Yokai Familiar", 48, 195);
+    _gfx->drawString("Tap outside button to return to Yokai Familiar", 36, 208);
   }
 };

@@ -8,6 +8,7 @@
 #include "audio_synth.h"
 #include "auth_crypto.h"
 #include "pet_renderer.h"
+#include "wifi_manager.h"
 
 // ============================================================================
 // Dataholics Resolve ServiceDesk - Scrap-Hound Digipet
@@ -22,10 +23,6 @@
 #define LDR_PIN        34    // Ambient Light Sensor
 #define BOOT_BTN_PIN    0    // Physical BOOT Button on back (Active LOW)
 
-// WiFi Network Credentials
-const char* WIFI_SSID = "Monkeyskull2";
-const char* WIFI_PASS = "6561766707";
-
 // Resolve ServiceDesk Secure Feed URL
 const char* RESOLVE_FEED_URL = "https://resolve.dataholics.com.mx/digipet_feed.php";
 
@@ -37,6 +34,7 @@ String DEVICE_SECRET_KEY = "757618edd61e1f81993949992d11b46eb10d62db902c5e8d6742
 LGFX gfx;
 ScrapHoundAudio soundFx;
 ScrapHoundRenderer petRenderer(&gfx);
+DigiPetWiFiManager wifiManager;
 
 // State Tracking
 String siliconMac = "";
@@ -75,6 +73,7 @@ unsigned long lastPollMs = 0;
 const unsigned long POLL_INTERVAL_MS = 3500;
 unsigned long touchStartTime = 0;
 bool prevBootBtn = HIGH;
+unsigned long bootBtnPressTime = 0;
 
 void audioPlayToneWrapper(int freq, int durationMs) {
   soundFx.playTone(freq, durationMs);
@@ -271,23 +270,33 @@ void setup() {
   // Play Dataholics Logo Boot Animation
   petRenderer.playBootAnimation(audioPlayToneWrapper);
 
-  // Connect to WiFi
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASS);
-  int attempts = 0;
-  while (WiFi.status() != WL_CONNECTED && attempts < 25) {
-    delay(300);
-    setRgbLed((attempts % 2) ? 255 : 0, 0, (attempts % 2) ? 0 : 255);
-    attempts++;
+  // Initialize Wi-Fi Network Manager
+  wifiManager.begin();
+
+  // If BOOT button is held down on power-on, launch Wi-Fi Config Portal immediately
+  if (digitalRead(BOOT_BTN_PIN) == LOW) {
+    Serial.println("[BOOT] Forced Wi-Fi Config Portal requested on power-on.");
+    soundFx.playTap();
+    wifiManager.startConfigPortal(&gfx, &soundFx, setRgbLed, 180);
   }
 
-  if (WiFi.status() == WL_CONNECTED) {
+  // Attempt connection with stored credentials (defaults to Monkeyskull2)
+  bool connected = wifiManager.connectStored(&gfx, setRgbLed, 8);
+  if (!connected) {
+    Serial.println("[WIFI] Stored connection failed. Auto-launching Config Portal...");
+    bool newCreds = wifiManager.startConfigPortal(&gfx, &soundFx, setRgbLed, 180);
+    if (newCreds) {
+      connected = wifiManager.connectStored(&gfx, setRgbLed, 10);
+    }
+  }
+
+  if (connected) {
     Serial.println("[WIFI] Connected! Syncing NTP...");
     setRgbLed(0, 255, 0);
     HardwareAuth::syncNtp();
     currentMood = MOOD_IDLE;
   } else {
-    Serial.println("[WIFI] Connection failed. Running in demo/offline mode.");
+    Serial.println("[WIFI] Connection unavailable. Running in offline/demo mode.");
     currentMood = MOOD_IDLE;
   }
 
@@ -299,14 +308,25 @@ void setup() {
 void loop() {
   unsigned long now = millis();
 
-  // 0. Physical BOOT Button Toggle for Conference Badge Mode
+  // 0. Physical BOOT Button: Short Press = Badge Mode | Long Press (>= 2.5s) = Wi-Fi Setup Portal
   bool curBootBtn = digitalRead(BOOT_BTN_PIN);
-  if (curBootBtn == LOW && prevBootBtn == HIGH && now > lastScreenInputMs) {
+  if (curBootBtn == LOW && prevBootBtn == HIGH) {
+    bootBtnPressTime = now;
+  } else if (curBootBtn == HIGH && prevBootBtn == LOW && now > lastScreenInputMs) {
+    unsigned long holdMs = now - bootBtnPressTime;
     lastScreenInputMs = now + 400;
-    if (currentScreen == SCREEN_BADGE) currentScreen = SCREEN_PET;
-    else currentScreen = SCREEN_BADGE;
-    petRenderer.clearScreen();
-    soundFx.playTap();
+    if (holdMs >= 2500) {
+      Serial.println("[BOOT] Long press: Launching Wi-Fi Config Portal...");
+      soundFx.playTap();
+      wifiManager.startConfigPortal(&gfx, &soundFx, setRgbLed, 180);
+      currentScreen = SCREEN_PET;
+      petRenderer.clearScreen();
+    } else {
+      if (currentScreen == SCREEN_BADGE) currentScreen = SCREEN_PET;
+      else currentScreen = SCREEN_BADGE;
+      petRenderer.clearScreen();
+      soundFx.playTap();
+    }
   }
   prevBootBtn = curBootBtn;
 
@@ -399,6 +419,15 @@ void loop() {
     uint16_t touchX, touchY;
     if (gfx.getTouch(&touchX, &touchY) && now > lastScreenInputMs) {
       lastScreenInputMs = now + 400;
+      // Check if user tapped the "[ 📡 TAP FOR WI-FI SETUP PORTAL ]" button
+      if (touchY >= 165 && touchY <= 204 && touchX >= 25 && touchX <= 295) {
+        Serial.println("[TOUCH] Wi-Fi Portal requested from Enrollment Enclave.");
+        soundFx.playTap();
+        wifiManager.startConfigPortal(&gfx, &soundFx, setRgbLed, 180);
+        currentScreen = SCREEN_PET;
+        petRenderer.clearScreen();
+        return;
+      }
       currentScreen = SCREEN_PET;
       petRenderer.clearScreen();
       soundFx.playTap();
