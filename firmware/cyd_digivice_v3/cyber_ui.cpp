@@ -1,10 +1,12 @@
 #include "cyber_ui.h"
 #include "sprites.h"
+#include "gundam_hd_sprites.h"
 #include "audio_synth.h"
 #include <time.h>
 
 extern void triggerGundamCutscene(uint8_t fxType, int fromS, int toS);
 extern void enterConferenceBadgeMode();
+extern void enterPetRoamingMode();
 
 CyberUI cyberUI;
 
@@ -51,9 +53,8 @@ static unsigned long previewUntilMs = 0;
 
 static void pet_touch_cb(lv_event_t * e) {
   soundFx.playChirp();
-  // Interactive Showcase: tapping the pet cycles stages for 5 seconds
-  previewUntilMs = millis() + 5000;
-  cyberUI.triggerEvolutionFanfare(-1);
+  // Launch Full-Screen 320x240 Interactive Gundam Roaming Pet Sandbox!
+  enterPetRoamingMode();
 }
 
 static void btn_transam_cb(lv_event_t * e) {
@@ -85,54 +86,71 @@ void CyberUI::setResetCircuitBreakerCallback(void (*cb)()) { onCircuitAckTrigger
 void CyberUI::setAudioToggleCallback(void (*cb)(bool)) { onAudioToggleTrigger = cb; }
 
 void CyberUI::createStyles() {
-  // 1. Dark Screen Background
+  // 1. Dark Screen Background (Deep Obsidian Gunpla Cockpit)
   lv_style_init(&styleDarkBg);
   lv_style_set_bg_color(&styleDarkBg, CYBER_COLOR_BLACK);
   lv_style_set_bg_opa(&styleDarkBg, LV_OPA_COVER);
   lv_style_set_border_width(&styleDarkBg, 0);
 
-  // 2. Cyber Panel Card (Dark Slate with subtle border)
+  // 2. Cyber Panel Card (Sculpted Cobalt Armor Card with 2px Vector Border & Drop Shadow)
   lv_style_init(&stylePanel);
-  lv_style_set_bg_color(&stylePanel, CYBER_COLOR_PANEL);
+  lv_style_set_bg_color(&stylePanel, lv_color_hex(0x0D1424));
+  lv_style_set_bg_grad_color(&stylePanel, lv_color_hex(0x080C17));
+  lv_style_set_bg_grad_dir(&stylePanel, LV_GRAD_DIR_VER);
   lv_style_set_bg_opa(&stylePanel, LV_OPA_COVER);
-  lv_style_set_border_color(&stylePanel, CYBER_COLOR_PANEL_ALT);
-  lv_style_set_border_width(&stylePanel, 1);
-  lv_style_set_radius(&stylePanel, 4);
+  lv_style_set_border_color(&stylePanel, lv_color_hex(0x28468C)); // Gundam Cobalt Blue Rim
+  lv_style_set_border_width(&stylePanel, 2);
+  lv_style_set_radius(&stylePanel, 6);
+  lv_style_set_shadow_color(&stylePanel, lv_color_hex(0x020408));
+  lv_style_set_shadow_width(&stylePanel, 6);
+  lv_style_set_shadow_offset_y(&stylePanel, 2);
   lv_style_set_pad_all(&stylePanel, 6);
 
-  // 3. Cyber Accent Panel (Neon Cyan Border)
+  // 3. Cyber Accent Panel (Hero Sanctuary & Chrono Card with Crisp 2px Cyan Rim + Glow)
   lv_style_init(&stylePanelAccent);
-  lv_style_set_bg_color(&stylePanelAccent, CYBER_COLOR_PANEL);
+  lv_style_set_bg_color(&stylePanelAccent, lv_color_hex(0x101A30));
+  lv_style_set_bg_grad_color(&stylePanelAccent, lv_color_hex(0x080D1A));
+  lv_style_set_bg_grad_dir(&stylePanelAccent, LV_GRAD_DIR_VER);
   lv_style_set_bg_opa(&stylePanelAccent, LV_OPA_COVER);
   lv_style_set_border_color(&stylePanelAccent, CYBER_COLOR_CYAN);
-  lv_style_set_border_width(&stylePanelAccent, 1);
-  lv_style_set_radius(&stylePanelAccent, 4);
+  lv_style_set_border_width(&stylePanelAccent, 2);
+  lv_style_set_radius(&stylePanelAccent, 6);
+  lv_style_set_shadow_color(&stylePanelAccent, lv_color_hex(0x003855));
+  lv_style_set_shadow_width(&stylePanelAccent, 8);
+  lv_style_set_shadow_offset_y(&stylePanelAccent, 2);
+  lv_style_set_pad_all(&stylePanelAccent, 5);
 
-  // 4. Gate State Styles
+  // 4. Gate State Styles (Crisp 2px Cel-Shaded Badges)
   lv_style_init(&styleGatePassed);
-  lv_style_set_bg_color(&styleGatePassed, lv_color_hex(0x06331A));
+  lv_style_set_bg_color(&styleGatePassed, lv_color_hex(0x073B20));
+  lv_style_set_bg_grad_color(&styleGatePassed, lv_color_hex(0x041F11));
+  lv_style_set_bg_grad_dir(&styleGatePassed, LV_GRAD_DIR_VER);
   lv_style_set_border_color(&styleGatePassed, CYBER_COLOR_GREEN);
-  lv_style_set_border_width(&styleGatePassed, 1);
-  lv_style_set_radius(&styleGatePassed, 4);
+  lv_style_set_border_width(&styleGatePassed, 2);
+  lv_style_set_radius(&styleGatePassed, 6);
 
   lv_style_init(&styleGateFailed);
-  lv_style_set_bg_color(&styleGateFailed, lv_color_hex(0x3B0715));
+  lv_style_set_bg_color(&styleGateFailed, lv_color_hex(0x4A0A1C));
+  lv_style_set_bg_grad_color(&styleGateFailed, lv_color_hex(0x26040D));
+  lv_style_set_bg_grad_dir(&styleGateFailed, LV_GRAD_DIR_VER);
   lv_style_set_border_color(&styleGateFailed, CYBER_COLOR_RED);
-  lv_style_set_border_width(&styleGateFailed, 1);
-  lv_style_set_radius(&styleGateFailed, 4);
+  lv_style_set_border_width(&styleGateFailed, 2);
+  lv_style_set_radius(&styleGateFailed, 6);
 
   lv_style_init(&styleGateIdle);
-  lv_style_set_bg_color(&styleGateIdle, CYBER_COLOR_PANEL);
-  lv_style_set_border_color(&styleGateIdle, CYBER_COLOR_PANEL_ALT);
-  lv_style_set_border_width(&styleGateIdle, 1);
-  lv_style_set_radius(&styleGateIdle, 4);
+  lv_style_set_bg_color(&styleGateIdle, lv_color_hex(0x0E1628));
+  lv_style_set_border_color(&styleGateIdle, lv_color_hex(0x28468C));
+  lv_style_set_border_width(&styleGateIdle, 2);
+  lv_style_set_radius(&styleGateIdle, 6);
 
-  // 5. Neon Touch Buttons
+  // 5. Neon Touch Buttons (Gundam Cockpit Tactile Triggers)
   lv_style_init(&styleNeonBtn);
-  lv_style_set_bg_color(&styleNeonBtn, lv_color_hex(0x0D2A3A));
+  lv_style_set_bg_color(&styleNeonBtn, lv_color_hex(0x123252));
+  lv_style_set_bg_grad_color(&styleNeonBtn, lv_color_hex(0x09192B));
+  lv_style_set_bg_grad_dir(&styleNeonBtn, LV_GRAD_DIR_VER);
   lv_style_set_border_color(&styleNeonBtn, CYBER_COLOR_CYAN);
-  lv_style_set_border_width(&styleNeonBtn, 1);
-  lv_style_set_radius(&styleNeonBtn, 4);
+  lv_style_set_border_width(&styleNeonBtn, 2);
+  lv_style_set_radius(&styleNeonBtn, 6);
   lv_style_set_text_color(&styleNeonBtn, CYBER_COLOR_CYAN);
 }
 
@@ -232,12 +250,12 @@ void CyberUI::buildPetTab(lv_obj_t* parent) {
   lv_obj_align(petCanvas, LV_ALIGN_TOP_MID, 0, 14);
 
   petStageLabel = lv_label_create(petCard);
-  lv_label_set_text(petStageLabel, "PROTO-GUNDAM");
+  lv_label_set_text(petStageLabel, "RX-78-2 GUNDAM");
   lv_obj_set_style_text_color(petStageLabel, CYBER_COLOR_CYAN, 0);
   lv_obj_align(petStageLabel, LV_ALIGN_BOTTOM_MID, 0, -28);
 
   lv_obj_t* tapHint = lv_label_create(petCard);
-  lv_label_set_text(tapHint, "TAP TO EVOLVE");
+  lv_label_set_text(tapHint, "TAP: PET VIEW");
   lv_obj_set_style_text_color(tapHint, CYBER_COLOR_TEXT_DIM, 0);
   lv_obj_align(tapHint, LV_ALIGN_BOTTOM_MID, 0, -14);
 
@@ -290,10 +308,14 @@ void CyberUI::buildPetTab(lv_obj_t* parent) {
   lv_obj_align(lblC, LV_ALIGN_TOP_LEFT, 2, 2);
 
   chronoCpuBar = lv_bar_create(vitalsCard);
-  lv_obj_set_size(chronoCpuBar, 112, 10);
-  lv_obj_align(chronoCpuBar, LV_ALIGN_TOP_LEFT, 38, 5);
-  lv_obj_set_style_bg_color(chronoCpuBar, CYBER_COLOR_PANEL_ALT, 0);
+  lv_obj_set_size(chronoCpuBar, 112, 11);
+  lv_obj_align(chronoCpuBar, LV_ALIGN_TOP_LEFT, 38, 4);
+  lv_obj_set_style_bg_color(chronoCpuBar, lv_color_hex(0x060A14), 0);
+  lv_obj_set_style_border_color(chronoCpuBar, lv_color_hex(0x28468C), 0);
+  lv_obj_set_style_border_width(chronoCpuBar, 1, 0);
+  lv_obj_set_style_radius(chronoCpuBar, 3, 0);
   lv_obj_set_style_bg_color(chronoCpuBar, CYBER_COLOR_CYAN, LV_PART_INDICATOR);
+  lv_obj_set_style_radius(chronoCpuBar, 2, LV_PART_INDICATOR);
 
   chronoCpuVal = lv_label_create(vitalsCard);
   lv_label_set_text(chronoCpuVal, "0.0%");
@@ -306,10 +328,14 @@ void CyberUI::buildPetTab(lv_obj_t* parent) {
   lv_obj_align(lblR, LV_ALIGN_BOTTOM_LEFT, 2, -2);
 
   chronoRamBar = lv_bar_create(vitalsCard);
-  lv_obj_set_size(chronoRamBar, 112, 10);
+  lv_obj_set_size(chronoRamBar, 112, 11);
   lv_obj_align(chronoRamBar, LV_ALIGN_BOTTOM_LEFT, 38, -4);
-  lv_obj_set_style_bg_color(chronoRamBar, CYBER_COLOR_PANEL_ALT, 0);
+  lv_obj_set_style_bg_color(chronoRamBar, lv_color_hex(0x060A14), 0);
+  lv_obj_set_style_border_color(chronoRamBar, lv_color_hex(0x664400), 0);
+  lv_obj_set_style_border_width(chronoRamBar, 1, 0);
+  lv_obj_set_style_radius(chronoRamBar, 3, 0);
   lv_obj_set_style_bg_color(chronoRamBar, CYBER_COLOR_AMBER, LV_PART_INDICATOR);
+  lv_obj_set_style_radius(chronoRamBar, 2, LV_PART_INDICATOR);
 
   chronoRamVal = lv_label_create(vitalsCard);
   lv_label_set_text(chronoRamVal, "0.0%");
@@ -606,23 +632,26 @@ static lv_color_t resolveSpriteColor(char code) {
 void CyberUI::drawSpriteOnCanvas(int stage, int scale) {
   if (!petCanvas) return;
 
-  // 1. Render Cyber-Sanctuary Background & Subtle Grid (72x72)
-  lv_color_t bgBase = (stage == 2) ? lv_color_hex(0x180612) : lv_color_hex(0x090E1A);
-  lv_color_t bgGrid = (stage == 2) ? lv_color_hex(0x2F0A22) : lv_color_hex(0x131D33);
+  // 1. Render Seamless Transparent Card Gradient Background (Matches stylePanelAccent #101A30 -> #080D1A)
   lv_color_t pedColor = CYBER_COLOR_CYAN;
   if (stage == 1) pedColor = CYBER_COLOR_GREEN;
   else if (stage == 2) pedColor = CYBER_COLOR_MAGENTA;
   else if (stage >= 3) pedColor = CYBER_COLOR_RED;
 
   for (int y = 0; y < 72; y++) {
+    // petCanvas sits at y_card = 20..91 inside the 166px petCard (#101A30 -> #080D1A)
+    int yc = 20 + y;
+    uint8_t gr = 0x10 - (yc * (0x10 - 0x08)) / 165;
+    uint8_t gg = 0x1A - (yc * (0x1A - 0x0D)) / 165;
+    uint8_t gb = 0x30 - (yc * (0x30 - 0x1A)) / 165;
+    lv_color_t rowBg = lv_color_make(gr, gg, gb);
     for (int x = 0; x < 72; x++) {
-      bool isGrid = (x % 12 == 0) || (y % 12 == 0);
-      lv_canvas_set_px(petCanvas, x, y, isGrid ? bgGrid : bgBase, LV_OPA_COVER);
+      lv_canvas_set_px(petCanvas, x, y, rowBg, LV_OPA_COVER);
     }
   }
 
   // 2. Render Holographic Projection Pedestal Ring at bottom (y = 62..67)
-  int ringWidth = (animOffset % 2 == 0) ? 24 : 21;
+  int ringWidth = ((animOffset / 4) % 2 == 0) ? 24 : 21;
   for (int dx = -ringWidth; dx <= ringWidth; dx++) {
     int px = 36 + dx;
     if (px >= 2 && px < 70) {
@@ -633,27 +662,48 @@ void CyberUI::drawSpriteOnCanvas(int stage, int scale) {
     }
   }
 
-  // 3. Select Dual-Frame Multi-Color Sprite Matrix
-  bool altFrame = (animOffset % 2) == 1;
-  const char* const* spriteMap = sprite_slime_f0;
-  switch (stage) {
-    case 0: spriteMap = altFrame ? sprite_slime_f1   : sprite_slime_f0;   break;
-    case 1: spriteMap = altFrame ? sprite_phantom_f1 : sprite_phantom_f0; break;
-    case 2: spriteMap = altFrame ? sprite_daemon_f1  : sprite_daemon_f0;  break;
-    default: spriteMap = altFrame ? sprite_tomb_f1   : sprite_tomb_f0;    break;
-  }
+  // 3. Draw Sprite on 72x72 Sanctuary Pod (0: RX-78-2, 1: BARBATOS, 2: UNICORN NT-D)
+  bool altFrame = ((animOffset / 4) % 2) == 1;
+  if (stage <= 2) {
+    const uint16_t* suitData = getEndlessDuelSprite(stage, 0, animOffset % 8);
 
-  // 4. Draw 24x24 Shaded Pixel Art at 3x Scale (72x72)
-  for (int r = 0; r < 24; r++) {
-    const char* rowStr = spriteMap[r];
-    for (int c = 0; c < 24; c++) {
-      char code = rowStr[c];
-      if (code != '.' && code != '\0') {
-        lv_color_t pixColor = resolveSpriteColor(code);
-        for (int dy = 0; dy < scale; dy++) {
-          for (int dx = 0; dx < scale; dx++) {
-            lv_canvas_set_px(petCanvas, c * scale + dx, r * scale + dy, pixColor, LV_OPA_COVER);
+    int bobY = 0;  // frames carry their own natural bob
+    for (int y = 0; y < 72; y++) {
+      int sy = y - bobY;
+      if (sy < 0 || sy >= 72) continue;
+      for (int x = 0; x < 72; x++) {
+        uint16_t c565 = pgm_read_word(&suitData[sy * 72 + x]);
+        if (c565 != GUNDAM_HD_TRANSPARENT) {
+          uint8_t r8 = ((c565 >> 11) & 0x1F) << 3;
+          uint8_t g8 = ((c565 >> 5) & 0x3F) << 2;
+          uint8_t b8 = (c565 & 0x1F) << 3;
+          if (stage == 1 && altFrame && g8 > 200 && r8 < 80) {
+            // Stage 1 (Barbatos): Alaya-Vijnana Eye Trail Flash
+            r8 = 0x66; g8 = 0xFF; b8 = 0xBB;
+          } else if (stage == 2 && altFrame && r8 > 210 && g8 < 80 && b8 > 60) {
+            // Stage 2 (Unicorn NT-D): Pulsing Psycho-Frame Seams!
+            r8 = 0xFF; g8 = 0x77; b8 = 0xBB;
           }
+          lv_canvas_set_px(petCanvas, x, y, lv_color_make(r8, g8, b8), LV_OPA_COVER);
+        }
+      }
+    }
+  } else {
+    // Stage 3: High-Definition 72x72 Battle-Damaged 404 Offline SD Gundam from Flash PROGMEM!
+    int shakeX = altFrame ? 1 : 0;
+    for (int y = 0; y < 72; y++) {
+      for (int x = 0; x < 72; x++) {
+        int sx = x - shakeX;
+        if (sx < 0 || sx >= 72) continue;
+        uint16_t c565 = pgm_read_word(&gundam_404_72x72[y * 72 + sx]);
+        if (c565 != GUNDAM_HD_TRANSPARENT) {
+          uint8_t r8 = ((c565 >> 11) & 0x1F) << 3;
+          uint8_t g8 = ((c565 >> 5) & 0x3F) << 2;
+          uint8_t b8 = (c565 & 0x1F) << 3;
+          if (altFrame && r8 > 200 && g8 < 90) {
+            r8 = 255; g8 = 0; b8 = 40; // Pulsing Crimson Offline Strobe
+          }
+          lv_canvas_set_px(petCanvas, x, y, lv_color_make(r8, g8, b8), LV_OPA_COVER);
         }
       }
     }
@@ -670,26 +720,25 @@ void CyberUI::drawSpriteOnCanvas(int stage, int scale) {
     }
   }
 
-  // 6. Render Animated 48x48 Mini-Haro Companion inside the Clock Card!
+  // 6. Render Animated 48x48 High-Definition Vector-Style Mini-Haro Companion inside the Clock Card!
   if (haroCanvas) {
-    lv_color_t cardBg = CYBER_COLOR_PANEL;
+    const uint16_t* haroHd = altFrame ? haro_hd_48x48_f1 : haro_hd_48x48_f0;
     for (int y = 0; y < 48; y++) {
+      // haroCanvas sits at y_card = 9..56 inside the 66px clockCard (#101A30 -> #080D1A)
+      int yc = 9 + y;
+      uint8_t gr = 0x10 - (yc * (0x10 - 0x08)) / 65;
+      uint8_t gg = 0x1A - (yc * (0x1A - 0x0D)) / 65;
+      uint8_t gb = 0x30 - (yc * (0x30 - 0x1A)) / 65;
+      lv_color_t cardRowBg = lv_color_make(gr, gg, gb);
       for (int x = 0; x < 48; x++) {
-        lv_canvas_set_px(haroCanvas, x, y, cardBg, LV_OPA_COVER);
-      }
-    }
-    const char* const* haroMap = altFrame ? sprite_haro_f1 : sprite_haro_f0;
-    for (int r = 0; r < 24; r++) {
-      const char* hRow = haroMap[r];
-      for (int c = 0; c < 24; c++) {
-        char hCode = hRow[c];
-        if (hCode != '.' && hCode != '\0') {
-          lv_color_t hCol = resolveSpriteColor(hCode);
-          for (int dy = 0; dy < 2; dy++) {
-            for (int dx = 0; dx < 2; dx++) {
-              lv_canvas_set_px(haroCanvas, c * 2 + dx, r * 2 + dy, hCol, LV_OPA_COVER);
-            }
-          }
+        uint16_t c565 = pgm_read_word(&haroHd[y * 48 + x]);
+        if (c565 == GUNDAM_HD_TRANSPARENT) {
+          lv_canvas_set_px(haroCanvas, x, y, cardRowBg, LV_OPA_COVER);
+        } else {
+          uint8_t r8 = ((c565 >> 11) & 0x1F) << 3;
+          uint8_t g8 = ((c565 >> 5) & 0x3F) << 2;
+          uint8_t b8 = (c565 & 0x1F) << 3;
+          lv_canvas_set_px(haroCanvas, x, y, lv_color_make(r8, g8, b8), LV_OPA_COVER);
         }
       }
     }
@@ -698,32 +747,21 @@ void CyberUI::drawSpriteOnCanvas(int stage, int scale) {
 
 extern void triggerGundamCutscene(uint8_t fxType, int fromS, int toS);
 
-void CyberUI::triggerEvolutionFanfare(int stage) {
-  int prevS = currentStage < 0 ? 0 : currentStage;
-  bool manualTap = (stage < 0);
-  if (manualTap) {
-    currentStage = (currentStage + 1) % 4;
-    if (currentStage == 1) {
-      triggerGundamCutscene(1, prevS, 1); // Full-Screen G-Frame Evolution!
-    } else if (currentStage == 2) {
-      soundFx.playEvolutionArpeggio();
-      triggerGundamCutscene(0, prevS, 2); // Full-Screen Twin Buster Laser!
-    }
-  } else {
-    currentStage = stage;
-  }
+void CyberUI::setCurrentStage(int stage) {
+  currentStage = stage;
+  previewUntilMs = millis() + 25000; // Keep manual suit selection active for 25s
   drawSpriteOnCanvas(currentStage);
   switch (currentStage) {
     case 0:
-      lv_label_set_text(petStageLabel, "PROTO-GUNDAM");
+      lv_label_set_text(petStageLabel, "RX-78-2 GUNDAM");
       lv_obj_set_style_text_color(petStageLabel, CYBER_COLOR_CYAN, 0);
       break;
     case 1:
-      lv_label_set_text(petStageLabel, "RX-78 CYBER");
+      lv_label_set_text(petStageLabel, "BARBATOS");
       lv_obj_set_style_text_color(petStageLabel, CYBER_COLOR_GREEN, 0);
       break;
     case 2:
-      lv_label_set_text(petStageLabel, "EXIA TRANS-AM");
+      lv_label_set_text(petStageLabel, "UNICORN NT-D");
       lv_obj_set_style_text_color(petStageLabel, CYBER_COLOR_MAGENTA, 0);
       break;
     default:
@@ -731,6 +769,24 @@ void CyberUI::triggerEvolutionFanfare(int stage) {
       lv_obj_set_style_text_color(petStageLabel, CYBER_COLOR_RED, 0);
       break;
   }
+}
+
+void CyberUI::triggerEvolutionFanfare(int stage) {
+  int prevS = currentStage < 0 ? 0 : currentStage;
+  bool manualTap = (stage < 0);
+  if (manualTap) {
+    currentStage = (currentStage + 1) % 4;
+    if (currentStage == 1) {
+      triggerGundamCutscene(1, prevS, 1); // Full-Screen G-Frame Evolution to BARBATOS!
+    } else if (currentStage == 2) {
+      soundFx.playEvolutionArpeggio();
+      triggerGundamCutscene(0, prevS, 2); // Full-Screen NT-D Destroy Burst to UNICORN!
+    }
+  } else {
+    currentStage = stage;
+  }
+  setCurrentStage(currentStage);
+  if (!manualTap) previewUntilMs = 0;
 }
 
 void CyberUI::tickAnimation() {
@@ -747,7 +803,7 @@ void CyberUI::tickAnimation() {
     lv_label_set_text(chronoDateLabel, dBuf);
 
     char tBuf[24];
-    char sep = (animOffset % 2 == 0) ? ':' : ' ';
+    char sep = ((animOffset / 4) % 2 == 0) ? ':' : ' ';
     snprintf(tBuf, sizeof(tBuf), "%02d%c%02d : %02d", timeinfo.tm_hour, sep, timeinfo.tm_min, timeinfo.tm_sec);
     lv_label_set_text(chronoTimeLabel, tBuf);
   } else {

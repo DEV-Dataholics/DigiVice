@@ -22,6 +22,8 @@ struct DigiviceTelemetry {
   int missionTicketId;
   String missionFolio;
   String missionStage;
+  String ticketStatus;
+  String ticketUpdatedAt;
   int missionAttempt;
   bool circuitBreakerTripped;
   String gate0;
@@ -43,6 +45,8 @@ public:
   void update(const DigiviceTelemetry& data);
   void tickAnimation();
   void triggerEvolutionFanfare(int stage);
+  int getCurrentStage() const { return currentStage; }
+  void setCurrentStage(int stage);
   void setBacklightCallback(void (*cb)(int));
   void setManualPollCallback(void (*cb)());
   void setResetCircuitBreakerCallback(void (*cb)());

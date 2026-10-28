@@ -7,6 +7,7 @@
 #include "cyd_display.h"
 #include "audio_synth.h"
 #include "sprites.h"
+#include "gundam_hd_sprites.h"
 #include "cyber_ui.h"
 
 // ============================================================================
@@ -50,6 +51,9 @@ bool forcePollNow = false;
 int prevStage = -1;
 bool prevMissionActive = false;
 int prevTicketId = 0;
+String prevMissionStage = "";
+String prevTicketStatus = "";
+String prevTicketUpdatedAt = "";
 bool prevCircuitBreaker = false;
 
 // Conference Lanyard Badge Mode State (240x320 Vertical Portrait, USB Port UP)
@@ -59,6 +63,26 @@ uint8_t badgeStyle = 0;      // 0 = Docking Emblem VIP Pass, 1 = Mecha Hatch Spl
 uint16_t badgeTick = 0;
 int16_t badgePrevPhase = -1;
 unsigned long lastBadgeInputMs = 0;
+
+// Full-Screen 320x240 Interactive Gundam Roaming Pet Mode State
+bool petRoamingMode = false;
+int16_t petX = 110;
+int8_t  petVx = 3;             // Smooth 3px step per frame (~60px/s at 20 FPS)
+uint8_t petAction = 0;         // 0=ROAM, 1=BORED, 2=WEAPON, 3=MISSILE, 4=HARO_PLAY, 5=SLEEP_NIGHT
+uint16_t petActionTick = 0;
+uint16_t petIdleTicks = 0;
+bool petNeedsStaticInit = true;
+unsigned long lastPetTouchMs = 0;
+
+// Zero-Flicker Dirty Rectangle Differential Tracking
+int16_t prevPetX = -1;
+int16_t prevDrawY = -1;
+int16_t prevHaroX = -1;
+int16_t prevHaroY = -1;
+int16_t prevExhaustX = -1;
+uint8_t prevPetAction = 255;
+float   lastPetCpuDisplay = -100.0f;
+unsigned long lastBubbleUpdateMs = 0;
 
 // ============================================================================
 // LVGL Driver Callbacks (LVGL 9.x Native)
@@ -177,6 +201,77 @@ static void drawGfxSpriteScaled(int stage, int frame, int ox, int oy, int scale,
   }
 }
 
+// High-Definition 16-bit RGB565 PROGMEM Sprite Renderer (RX-78-2, Barbatos, Unicorn NT-D & Haro)
+static void drawGfxHdGundam(const uint16_t* progmemData, int w, int h, int ox, int oy, int stage = 0, int frame = 0, int32_t overrideCol = -1, bool flipX = false) {
+  bool alt = (frame % 2) == 1;
+  for (int y = 0; y < h; y++) {
+    int py = oy + y;
+    if (py < 0 || py >= 240) continue;
+    for (int x = 0; x < w; x++) {
+      int px = ox + x;
+      if (px < 0 || px >= 320) continue;
+      int sx = flipX ? (w - 1 - x) : x;
+      uint16_t c565 = pgm_read_word(&progmemData[y * w + sx]);
+      if (c565 != GUNDAM_HD_TRANSPARENT) {
+        if (overrideCol >= 0) {
+          gfx.writePixel(px, py, (uint16_t)overrideCol);
+        } else if (alt && stage == 1) {
+          uint8_t r8 = ((c565 >> 11) & 0x1F) << 3;
+          uint8_t g8 = ((c565 >> 5) & 0x3F) << 2;
+          if (g8 > 200 && r8 < 80) gfx.writePixel(px, py, gfx.color565(0x66, 0xFF, 0xBB));
+          else gfx.writePixel(px, py, c565);
+        } else if (alt && stage == 2) {
+          uint8_t r8 = ((c565 >> 11) & 0x1F) << 3;
+          uint8_t g8 = ((c565 >> 5) & 0x3F) << 2;
+          uint8_t b8 = (c565 & 0x1F) << 3;
+          if (r8 > 210 && g8 < 80 && b8 > 60) gfx.writePixel(px, py, gfx.color565(0xFF, 0x88, 0xCC));
+          else gfx.writePixel(px, py, c565);
+        } else {
+          gfx.writePixel(px, py, c565);
+        }
+      }
+    }
+  }
+}
+
+static inline const uint16_t* getEndlessDuelSuitSprite(int stage, uint8_t action, int tick, int px) {
+  int pose = 0; // 0=Shield Walk/Idle, 1=Rocket Thruster Boost, 2=Saber/Rifle Attack
+  int frame = 0;
+  if (action == 0) {
+    // Alternate between Shield Walk (pose 0) and Rocket Thruster Boost (pose 1) during hangar patrol!
+    pose = ((tick / 14) % 2 == 1) ? 1 : 0;
+    frame = (abs(px) / (pose == 1 ? 3 : 4)) % 8;   // feet locked to ground speed
+  } else if (action == 2) {
+    // Melee Beam Saber / Iron Mace Slam + Blazing Alaya-Vijnana / NT-D Aura (attack_f0 & attack_f1)
+    pose = 2;
+    frame = (tick / 4) % 4;                        // melee f0-3
+  } else if (action == 3) {
+    // Ranged Beam Rifle / Smoothbore / Beam Magnum + Shield/Shoulder Missile Salvo (attack_f2 & attack_f3)
+    pose = 2;
+    frame = 4 + ((tick / 2) % 4);                  // ranged f4-7
+  } else if (action == 4) {
+    // Haro Ball Soccer: Rocket Thruster Hover
+    pose = 1;
+    frame = (tick / 2) % 8;
+  } else {
+    // Combat Guard / Idle Breathing
+    pose = 0;
+    frame = (tick / 3) % 8;
+  }
+  return getEndlessDuelSprite(stage, pose, frame);
+}
+
+static const uint16_t* getHdSuit72(int stage) {
+  if (stage >= 3) return gundam_404_72x72;
+  return getEndlessDuelSprite(stage, 0, 0);
+}
+
+static const uint16_t* getHdSuit120(int stage) {
+  if (stage == 1) return barbatos_sd_120x154;
+  if (stage == 2) return unicorn_sd_120x154;
+  return gundam_sd_120x154;
+}
+
 void triggerGundamCutscene(uint8_t fxType, int fromS, int toS) {
   uint16_t colBg       = (fxType == 0) ? gfx.color565(0x16, 0x04, 0x0D) : gfx.color565(0x05, 0x08, 0x11);
   uint16_t colSpeed    = (fxType == 0) ? gfx.color565(0x55, 0x0A, 0x2E) : gfx.color565(0x11, 0x22, 0x38);
@@ -189,6 +284,10 @@ void triggerGundamCutscene(uint8_t fxType, int fromS, int toS) {
   uint16_t colRed      = gfx.color565(0xFF, 0x2A, 0x55);
   uint16_t colWhite    = 0xFFFF;
 
+  if (conferenceBadgeMode) {
+    gfx.setRotation(1); // Temporarily switch to 320x240 landscape for cutscene
+  }
+
   gfx.startWrite();
   // Differential Frame Buffer Init: clear background ONCE per cutscene (eliminates full-screen flash/flicker!)
   uint16_t initBg = colBg;
@@ -196,10 +295,12 @@ void triggerGundamCutscene(uint8_t fxType, int fromS, int toS) {
   else if (fxType == 4) initBg = gfx.color565(0x07, 0x09, 0x0E);
   else if (fxType == 5) initBg = gfx.color565(0x05, 0x07, 0x0B);
   else if (fxType == 6) initBg = gfx.color565(0x06, 0x0A, 0x12);
+  else if (fxType == 7) initBg = gfx.color565(0x06, 0x0D, 0x1B);
+  else if (fxType == 8) initBg = gfx.color565(0x05, 0x16, 0x0F);
   gfx.fillScreen(initBg);
 
   for (int t = 0; t < 18; t++) {
-    if (fxType < 4 && fxType != 2) {
+    if (fxType < 2) {
       gfx.fillScreen(colBg);
       // Anime horizontal speedlines
       for (int i = 0; i < 20; i++) {
@@ -210,54 +311,52 @@ void triggerGundamCutscene(uint8_t fxType, int fromS, int toS) {
     }
 
     if (fxType == 0) {
-      // GUNDAM EXIA: TRANS-AM OVERDRIVE BURST CUTSCENE
+      // UNICORN GUNDAM [NT-D DESTROY MODE]: PSYCHO-FRAME OVERDRIVE BURST CUTSCENE
       gfx.fillRect(0, 0, 320, 24, gfx.color565(0x3B, 0x05, 0x1C));
       gfx.fillRect(0, 216, 320, 24, gfx.color565(0x3B, 0x05, 0x1C));
       gfx.setTextColor(colMint);
-      gfx.setCursor(10, 7);
-      gfx.print("GN-DRIVE OVERLOAD // TRANS-AM SYSTEM!!");
+      gfx.setCursor(8, 7);
+      gfx.print("NT-D SYSTEM // UNICORN PSYCHO-FRAME BURST!");
       gfx.setTextColor(colGold);
       gfx.setCursor(12, 223);
-      gfx.print("OUTPUT: 300% // GN SWORD FULL-BURST");
+      gfx.print("BEAM MAGNUM + I-FIELD SHIELD FUNNELS!!");
 
-      // Floating Emerald GN Particles
+      // Floating Psycho-Frame Crimson/Mint Particles
       for (int p = 0; p < 16; p++) {
         int px = (p * 47 + t * 23) % 310 + 4;
         int py = (p * 31 - t * 11 + 400) % 180 + 28;
-        gfx.fillRect(px, py, 3, 3, (p % 2 == 0) ? colMint : colGreen);
+        gfx.fillRect(px, py, 3, 3, (p % 2 == 0) ? colMagenta : colMint);
       }
 
-      // 3 High-Speed Trans-Am After-Image Clones
-      drawGfxSpriteScaled(2, t % 2, 4 + (t % 3) * 4, 62, 5, colRed);
-      drawGfxSpriteScaled(2, t % 2, 18 + (t % 2) * 4, 58, 5, colViolet);
+      // 3 High-Speed NT-D After-Image Clones + 120x154 HD SD UNICORN GUNDAM!
+      drawGfxHdGundam(unicorn_sd_120x154, 120, 154, 4 + (t % 3) * 4, 44, 2, t, colRed);
+      drawGfxHdGundam(unicorn_sd_120x154, 120, 154, 16 + (t % 2) * 4, 40, 2, t, colViolet);
 
       int shakeX = (t >= 5 && (t % 2 == 0)) ? 4 : 0;
-      drawGfxSpriteScaled(2, t % 2, 34 + shakeX, 54, 5);
+      drawGfxHdGundam(unicorn_sd_120x154, 120, 154, 28 + shakeX, 38, 2, t);
 
       int muzzleX = 136;
       int muzzleY = 118;
       if (t < 6) {
         int rad = 8 + t * 6;
         gfx.drawCircle(muzzleX, muzzleY, rad, colMint);
-        gfx.fillCircle(muzzleX, muzzleY, rad - 3, (t % 2 == 0) ? colGreen : colMagenta);
+        gfx.fillCircle(muzzleX, muzzleY, rad - 3, (t % 2 == 0) ? colMagenta : colGold);
       } else {
-        // X-Shaped GN Sword Slashes + GN Full-Burst Beam
         int beamEnd = min(320, muzzleX + (t - 5) * 56);
         int beamW = beamEnd - muzzleX;
         int jit = (t % 2 == 0) ? 3 : -3;
 
-        gfx.fillRect(muzzleX, muzzleY - 34 + jit, beamW, 68, (t % 2 == 0) ? colMagenta : colRed);
-        gfx.fillRect(muzzleX, muzzleY - 22 - jit, beamW, 44, (t % 2 == 0) ? colGreen : colMint);
+        gfx.fillRect(muzzleX, muzzleY - 34 + jit, beamW, 68, (t % 2 == 0) ? colMagenta : colViolet);
+        gfx.fillRect(muzzleX, muzzleY - 22 - jit, beamW, 44, (t % 2 == 0) ? colCyan : colMint);
         gfx.fillRect(muzzleX, muzzleY - 10, beamW, 20, colWhite);
 
-        // Diagonal GN Sword Slashes across right side
         for (int s = 0; s < 5; s++) {
           gfx.drawLine(180 + s, 32, 310 + s, 204, colMint);
           gfx.drawLine(310 + s, 32, 180 + s, 204, colWhite);
         }
       }
     } else if (fxType == 1) {
-      // G-FRAME EVOLUTION CUT-IN (Proto -> RX-Cyber -> Exia)
+      // G-FRAME EVOLUTION CUT-IN (RX-78-2 -> BARBATOS -> UNICORN)
       gfx.fillRect(0, 0, 320, 24, gfx.color565(0x0A, 0x19, 0x2F));
       gfx.fillRect(0, 216, 320, 24, gfx.color565(0x0A, 0x19, 0x2F));
       gfx.setTextColor(colCyan);
@@ -266,7 +365,7 @@ void triggerGundamCutscene(uint8_t fxType, int fromS, int toS) {
       gfx.drawRect(160 - t * 7, 120 - t * 4, t * 14, t * 8, (t % 2 == 0) ? colCyan : colGold);
       int curS = (t > 9 || (t % 2 == 0)) ? toS : fromS;
       int32_t flash = (t >= 6 && t <= 10 && (t % 2 == 1)) ? (int32_t)colWhite : -1;
-      drawGfxSpriteScaled(curS, t % 2, 100, 56, 5, flash);
+      drawGfxHdGundam(getHdSuit120(curS), 120, 154, 100, 40, curS, t, flash);
     } else if (fxType == 2) {
       // HARO INCOMING TICKET ALERT CUTSCENE ("TICKET IN! TICKET IN!")
       if (t == 0) {
@@ -281,11 +380,11 @@ void triggerGundamCutscene(uint8_t fxType, int fromS, int toS) {
       gfx.setCursor(10, 7);
       gfx.print(">>> HARO COMMS: INCOMING TICKET ALERT! <<<");
 
-      // Clear only HARO's bounce box (no full screen wipe!)
+      // Clear only HARO's bounce box (no full screen wipe!) and render 90x90 HD Vector-Style HARO!
       gfx.fillRect(8, 46, 100, 124, gfx.color565(0x05, 0x13, 0x0E));
       int bounceY = (t % 4 == 1 || t % 4 == 2) ? 18 : 0;
-      int haroFrame = (bounceY > 0) ? 1 : 0;
-      drawGfxSpriteScaled(4, haroFrame, 10, 68 - bounceY, 4);
+      const uint16_t* haroBig = (bounceY > 0) ? haro_hd_90x90_f1 : haro_hd_90x90_f0;
+      drawGfxHdGundam(haroBig, 90, 90, 12, 66 - bounceY, 0, t);
 
       // Hologram Telemetry Box on Right
       if (t == 0) {
@@ -509,10 +608,13 @@ void triggerGundamCutscene(uint8_t fxType, int fromS, int toS) {
         gfx.print(">>> HANGAR READY // K-2SO TETHERED <<<");
       }
 
-      // Update Only Right-Side Bouncing HARO + Waking Gundam!
+      // Update Only Right-Side Bouncing HD HARO + Waking HD SD RX-78-2 Gundam (Restore Grid for 100% Transparent Background!)
       gfx.fillRect(204, 4, 96, 78, colDark);
+      for (int gx = 220; gx <= 280; gx += 20) gfx.drawFastVLine(gx, 4, 78, colGrid);
+      for (int gy = 20; gy <= 80; gy += 20) gfx.drawFastHLine(204, gy, 96, colGrid);
       int bounce = (t % 4 == 1 || t % 4 == 2) ? 10 : 0;
-      drawGfxSpriteScaled(4, (bounce > 0) ? 1 : 0, 212, 14 - bounce, 3);
+      const uint16_t* haroBoot = (bounce > 0) ? haro_hd_48x48_f1 : haro_hd_48x48_f0;
+      drawGfxHdGundam(haroBoot, 48, 48, 224, 20 - bounce, 0, t);
 
       gfx.fillRect(194, 84, 116, 20, gfx.color565(0x06, 0x33, 0x1A));
       gfx.drawRect(194, 84, 116, 20, colGreen);
@@ -522,22 +624,145 @@ void triggerGundamCutscene(uint8_t fxType, int fromS, int toS) {
       gfx.print((t % 2 == 0) ? "\"HELLO MY CTO!\"" : "\"TiRA ONLINE!\"");
 
       gfx.fillRect(208, 110, 84, 84, colDark);
-      drawGfxSpriteScaled(1, t % 2, 214, 112, 3, (t < 6 && t % 2 == 0) ? (int32_t)colCyan : -1);
+      for (int gx = 220; gx <= 280; gx += 20) gfx.drawFastVLine(gx, 110, 84, colGrid);
+      for (int gy = 120; gy <= 180; gy += 20) gfx.drawFastHLine(208, gy, 84, colGrid);
+      drawGfxHdGundam(gundam_sd_72x72, 72, 72, 214, 114, 1, t, (t < 6 && t % 2 == 0) ? (int32_t)colCyan : -1);
+    } else if (fxType == 7) {
+      // FX 7: LIVE TICKET STATE UPDATE CUTSCENE (IN_PROGRESS / BLUEPRINT / GATES)
+      uint16_t colNavy = gfx.color565(0x06, 0x0D, 0x1B);
+      if (t == 0) {
+        gfx.fillRect(0, 0, 320, 24, gfx.color565(0x0B, 0x1E, 0x38));
+        gfx.fillRect(0, 216, 320, 24, gfx.color565(0x0B, 0x1E, 0x38));
+        gfx.fillRect(0, 23, 320, 2, colCyan);
+        gfx.fillRect(0, 215, 320, 2, colCyan);
+        gfx.setTextSize(1);
+        gfx.setTextColor(colGold);
+        gfx.setCursor(16, 223);
+        gfx.printf("STAGE: %s // ATTEMPT #%d", telemetry.missionStage.c_str(), max(1, telemetry.missionAttempt));
+
+        // Right Tactical Update Card
+        gfx.fillRect(132, 36, 178, 164, gfx.color565(0x0C, 0x19, 0x2E));
+        gfx.setTextColor(colWhite);
+        gfx.setCursor(142, 50);
+        gfx.printf("TICKET #%d UPDATED!", telemetry.missionTicketId);
+        gfx.setTextColor(colCyan);
+        gfx.setCursor(142, 72);
+        gfx.printf("STATUS: %s", telemetry.ticketStatus.c_str());
+        gfx.setTextColor(colMint);
+        gfx.setCursor(142, 94);
+        gfx.printf("STAGE:  %s", telemetry.missionStage.c_str());
+
+        gfx.fillRect(142, 116, 158, 22, gfx.color565(0x06, 0x33, 0x1A));
+        gfx.drawRect(142, 116, 158, 22, colGreen);
+        gfx.setTextColor(colGreen);
+        gfx.setCursor(148, 123);
+        gfx.print("G0:PASS  G1:PASS  G2:RUN");
+
+        gfx.fillRect(142, 148, 158, 40, gfx.color565(0x16, 0x10, 0x28));
+        gfx.drawRect(142, 148, 158, 40, colGold);
+        gfx.setTextColor(colGold);
+        gfx.setCursor(148, 156);
+        gfx.print("MOBILE SUIT ENGAGED:");
+        gfx.setTextColor(colWhite);
+        gfx.setCursor(148, 172);
+        int st = cyberUI.getCurrentStage();
+        gfx.print(st == 1 ? "ASW-G-08 BARBATOS" : (st == 2 ? "RX-0 UNICORN [NT-D]" : "RX-78-2 GUNDAM"));
+      }
+      gfx.fillRect(8, 5, 304, 14, gfx.color565(0x0B, 0x1E, 0x38));
+      gfx.setTextColor((t % 2 == 0) ? colCyan : colGold);
+      gfx.setCursor(10, 7);
+      gfx.print(">>> TACTICAL UPLINK: TICKET STATE UPDATED! <<<");
+      gfx.drawRect(132, 36, 178, 164, (t % 2 == 0) ? colCyan : colGold);
+
+      // Left Active Gundam Suit performing Combat Strike!
+      int st = cyberUI.getCurrentStage();
+      if (st < 0 || st > 2) st = 0;
+      gfx.fillRect(4, 34, 124, 170, colNavy);
+      int lungeX = (t % 4 == 1 || t % 4 == 2) ? 8 : 2;
+      drawGfxHdGundam(getHdSuit120(st), 120, 154, lungeX, 40, st, t);
+      // Weapon slash flash over suit
+      if (t % 2 == 1) {
+        uint16_t wCol = (st == 1) ? colGold : ((st == 2) ? colMagenta : colCyan);
+        gfx.drawLine(14, 52, 122, 176, wCol);
+        gfx.drawLine(15, 52, 123, 176, colWhite);
+      }
+    } else if (fxType == 8) {
+      // FX 8: TICKET RESOLVED // MISSION ACCOMPLISHED VICTORY FANFARE!
+      uint16_t colVicBg = gfx.color565(0x05, 0x16, 0x0F);
+      if (t == 0) {
+        gfx.fillRect(0, 0, 320, 24, gfx.color565(0x09, 0x36, 0x1E));
+        gfx.fillRect(0, 216, 320, 24, gfx.color565(0x09, 0x36, 0x1E));
+        gfx.fillRect(0, 23, 320, 2, colGold);
+        gfx.fillRect(0, 215, 320, 2, colGold);
+
+        gfx.setTextSize(1);
+        gfx.setTextColor(colMint);
+        gfx.setCursor(18, 223);
+        gfx.print("ALL GATES PASSED // ZERO FALSE POSITIVES!");
+
+        // Right Victory Banner Card
+        gfx.fillRect(132, 36, 178, 164, gfx.color565(0x08, 0x24, 0x18));
+        gfx.fillRect(140, 46, 162, 34, gfx.color565(0x28, 0x1E, 0x05));
+        gfx.drawRect(140, 46, 162, 34, colGold);
+        gfx.setTextSize(2);
+        gfx.setTextColor(colGold);
+        gfx.setCursor(154, 55);
+        gfx.print("RESOLVED!");
+
+        gfx.setTextSize(1);
+        gfx.setTextColor(colWhite);
+        gfx.setCursor(142, 92);
+        gfx.printf("TICKET: #%d", telemetry.missionTicketId);
+        gfx.setTextColor(colGreen);
+        gfx.setCursor(142, 110);
+        gfx.print("G0:PASS  G1:PASS  G2:PASS");
+        gfx.setTextColor(colCyan);
+        gfx.setCursor(142, 126);
+        gfx.print("STARDUST PING: HTTP 200");
+      }
+      gfx.fillRect(8, 5, 304, 14, gfx.color565(0x09, 0x36, 0x1E));
+      gfx.setTextSize(1);
+      gfx.setTextColor((t % 2 == 0) ? colGold : colGreen);
+      gfx.setCursor(12, 7);
+      gfx.print("*** MISSION ACCOMPLISHED // TICKET CLOSED ***");
+      gfx.drawRect(132, 36, 178, 164, (t % 2 == 0) ? colGold : colGreen);
+
+      // Bouncing HD Vector HARO inside right victory card + Active HD Gundam on left!
+      gfx.fillRect(142, 140, 158, 54, gfx.color565(0x08, 0x24, 0x18));
+      int hb = (t % 2) * 4;
+      drawGfxHdGundam((t % 2) ? haro_hd_48x48_f1 : haro_hd_48x48_f0, 48, 48, 146, 144 - hb, 0, t);
+      gfx.setTextColor(colGold);
+      gfx.setCursor(202, 156);
+      gfx.print((t % 2 == 0) ? "\"VICTORY!!\"" : "\"GREAT JOB!\"");
+      gfx.setTextColor(colMint);
+      gfx.setCursor(202, 174);
+      gfx.print("MY CTO // K-2SO");
+
+      int st = cyberUI.getCurrentStage();
+      if (st < 0 || st > 2) st = 0;
+      gfx.fillRect(4, 34, 124, 170, colVicBg);
+      int jumpY = (t % 2 == 0) ? 36 : 42;
+      drawGfxHdGundam(getHdSuit120(st), 120, 154, 6, jumpY, st, t);
     } else {
-      // RED ALERT / CIRCUIT BREAKER EMP
+      // RED ALERT / CIRCUIT BREAKER EMP (120x154 HD SD Gundam in Crimson Alert!)
       gfx.fillRect(0, 0, 320, 24, colRed);
       gfx.fillRect(0, 216, 320, 24, colRed);
       gfx.setTextColor(colWhite);
       gfx.setCursor(20, 7);
       gfx.print("!!! TACTICAL INTERCEPT // ALERT !!!");
-      drawGfxSpriteScaled(2, t % 2, 100, 56, 5, (t % 2 == 0) ? (int32_t)colRed : -1);
+      drawGfxHdGundam(unicorn_sd_120x154, 120, 154, 100, 40, 2, t, (t % 2 == 0) ? (int32_t)colRed : -1);
     }
     delay(65);
   }
   gfx.endWrite();
 
-  // Force LVGL to repaint the full 320x240 HUD after the cutscene completes
-  if (lv_screen_active()) {
+  if (conferenceBadgeMode) {
+    gfx.setRotation(2); // Restore Vertical Portrait 240x320 Badge Mode
+    badgePrevPhase = -1;
+  } else if (petRoamingMode) {
+    petNeedsStaticInit = true; // Repaint Full-Screen Pet Hangar cleanly
+  } else if (lv_screen_active()) {
+    // Force LVGL to repaint the full 320x240 HUD after the cutscene completes
     lv_obj_invalidate(lv_screen_active());
   }
 }
@@ -694,7 +919,8 @@ void renderConferenceBadgeTick() {
       int cardY = 310 - (int)(p * 186.0f);
       gfx.drawRect(10, cardY, 220, 76, colCyan);
     } else {
-      // Style 1: Mecha Hatch Blast Doors split open vertically!
+      // Style 1: Mecha Hatch Blast Doors split open vertically to reveal Giant HD SD RX-78-2 Gundam!
+      drawGfxHdGundam(gundam_sd_120x154, 120, 154, 60, 88, 1, t);
       int splitY = (step + 1) * 12;
       int topDoorH = max(0, 140 - splitY);
       if (topDoorH > 0) {
@@ -776,13 +1002,15 @@ void renderConferenceBadgeTick() {
       gfx.print("* CTO *");
     }
 
-    // Dynamic Update 2: Animated Haro (Style 0) or Exia Gundam (Style 1) in Bottom-Left Box!
+    // Dynamic Update 2: Animated HD Haro (Style 0) or HD SD RX-78-2 Gundam (Style 1) in Bottom-Left Box!
     gfx.fillRect(14, 252, 54, 52, gfx.color565(0x0A, 0x16, 0x24));
     if (badgeStyle == 0) {
-      int hb = (t % 2) * 3;
-      drawGfxSpriteScaled(4, t % 2, 16, 256 - hb, 2); // Bouncing Haro!
+      int hb = (t % 2) * 2;
+      const uint16_t* haroBadge = (t % 2) ? haro_hd_48x48_f1 : haro_hd_48x48_f0;
+      drawGfxHdGundam(haroBadge, 48, 48, 17, 254 - hb, 0, t); // Native 48x48 HD Vector-Style Haro!
     } else {
-      drawGfxSpriteScaled(2, t % 2, 16, 254, 2);      // Gundam Exia Trans-Am!
+      int gb = (t % 2) * 2;
+      drawGfxHdGundam(gundam_sd_48x48, 48, 48, 17, 254 - gb, 1, t); // Native 48x48 HD SD RX-78-2 Gundam!
     }
   }
 
@@ -799,6 +1027,390 @@ void renderConferenceBadgeTick() {
   bool ledStep = (badgeTick / 6) % 2;
   if (ledStep) setRgbLed(1, 1, 0); // Orange/Gold
   else setRgbLed(0, 1, 1);         // Electric Cyan
+}
+
+// ============================================================================
+// 320x240 Full-Screen Interactive Gundam Playground / Roaming Pet Mode
+// Autonomous Roaming, Boredom AI, Signature Weapons, Haro Soccer & LDR Night Mode
+// ============================================================================
+
+// Restores the static Cyber Hangar perspective floor & grid over a specific dirty rectangle (rx, ry, rw, rh)
+static void restoreHangarRect(int rx, int ry, int rw, int rh, uint16_t colBg, uint16_t colGrid, uint16_t colCyan) {
+  if (rw <= 0 || rh <= 0) return;
+  // Arena vertical bounds: y = 28 to 211
+  if (rx < 0) { rw += rx; rx = 0; }
+  if (ry < 28) { rh -= (28 - ry); ry = 28; }
+  if (rx + rw > 320) rw = 320 - rx;
+  if (ry + rh > 211) rh = 211 - ry;
+  if (rw <= 0 || rh <= 0) return;
+
+  // Clear dirty rectangle to solid arena background
+  gfx.fillRect(rx, ry, rw, rh, colBg);
+
+  // Restore vertical grid lines: gx = 16, 48, 80, 112, 144, 176, 208, 240, 272, 304 (step 32)
+  int firstGx = ((rx - 16) / 32) * 32 + 16;
+  if (firstGx < 16) firstGx = 16;
+  for (int gx = firstGx; gx < rx + rw && gx < 320; gx += 32) {
+    if (gx >= rx) {
+      int lineTop = max(28, ry);
+      int lineBot = min(179, ry + rh);
+      if (lineBot > lineTop) {
+        gfx.drawFastVLine(gx, lineTop, lineBot - lineTop, colGrid);
+      }
+    }
+  }
+
+  // Restore Cyan Floor Horizon Line at y = 179
+  if (ry <= 179 && (ry + rh) >= 179) {
+    gfx.drawFastHLine(rx, 179, rw, colCyan);
+  }
+
+  // Restore Perspective Floor Diagonals: fx = 0..320 step 28, from (fx, 179) to (fx - 18, 210)
+  if (ry + rh >= 179 && ry <= 210) {
+    for (int fx = 0; fx < 320; fx += 28) {
+      int minX = min(fx, fx - 18);
+      int maxX = max(fx, fx - 18);
+      if (maxX >= rx && minX <= rx + rw) {
+        gfx.drawLine(fx, 179, fx - 18, 210, colGrid);
+      }
+    }
+  }
+}
+
+void enterPetRoamingMode() {
+  petRoamingMode = true;
+  petX = 116;
+  petVx = 3;
+  petAction = 0; // ROAM
+  petActionTick = 0;
+  petIdleTicks = 0;
+  petNeedsStaticInit = true;
+  lastPetTouchMs = millis() + 350;
+
+  prevPetX = -1;
+  prevDrawY = -1;
+  prevHaroX = -1;
+  prevHaroY = -1;
+  prevExhaustX = -1;
+  prevPetAction = 255;
+  lastPetCpuDisplay = -100.0f;
+  lastBubbleUpdateMs = 0;
+
+  gfx.setRotation(1); // 320x240 Landscape
+  gfx.fillScreen(gfx.color565(0x06, 0x09, 0x12));
+}
+
+void exitPetRoamingMode() {
+  petRoamingMode = false;
+  lastPetTouchMs = millis() + 350;
+  soundFx.playChirp();
+  gfx.fillScreen(TFT_BLACK);
+  if (lv_screen_active()) {
+    lv_obj_invalidate(lv_screen_active());
+  }
+}
+
+void renderPetRoamingTick() {
+  int st = cyberUI.getCurrentStage();
+  if (st < 0 || st > 2) st = 0; // Default to RX-78-2 in playground if offline
+
+  // Check LDR ambient light sensor for Night Hangar Mode
+  bool isNight = (telemetry.ldrValue > 900);
+
+  uint16_t colBg      = isNight ? gfx.color565(0x02, 0x04, 0x09) : gfx.color565(0x07, 0x0B, 0x16);
+  uint16_t colHdr     = gfx.color565(0x0E, 0x16, 0x28);
+  uint16_t colGrid    = isNight ? gfx.color565(0x09, 0x12, 0x22) : gfx.color565(0x13, 0x1E, 0x35);
+  uint16_t colCyan    = gfx.color565(0x00, 0xF0, 0xFF);
+  uint16_t colGold    = gfx.color565(0xFF, 0xDD, 0x00);
+  uint16_t colGreen   = gfx.color565(0x00, 0xFF, 0x88);
+  uint16_t colMint    = gfx.color565(0x66, 0xFF, 0xBB);
+  uint16_t colMagenta = gfx.color565(0xFF, 0x22, 0x88);
+  uint16_t colRed     = gfx.color565(0xFF, 0x2A, 0x55);
+  uint16_t colOrange  = gfx.color565(0xFF, 0x73, 0x00);
+  uint16_t colWhite   = 0xFFFF;
+
+  gfx.startWrite();
+
+  // 1. Draw Top & Bottom Control Bars + Initial Hangar Floor ONCE on entry or suit switch
+  if (petNeedsStaticInit) {
+    petNeedsStaticInit = false;
+    prevPetX = -1;
+    prevDrawY = -1;
+    prevHaroX = -1;
+    prevHaroY = -1;
+    prevExhaustX = -1;
+    prevPetAction = 255;
+    lastPetCpuDisplay = -100.0f;
+    lastBubbleUpdateMs = 0;
+
+    gfx.fillScreen(colBg);
+
+    // Top Header Bar (y = 0..27)
+    gfx.fillRect(0, 0, 320, 28, colHdr);
+    gfx.fillRect(0, 27, 320, 2, colCyan);
+
+    // [ < BACK ] Button (Top-Left x=4..68)
+    gfx.fillRect(4, 3, 64, 21, gfx.color565(0x28, 0x0A, 0x16));
+    gfx.drawRect(4, 3, 64, 21, colRed);
+    gfx.setTextSize(1);
+    gfx.setTextColor(colWhite);
+    gfx.setCursor(10, 10);
+    gfx.print("< BACK");
+
+    // Active Suit Title in Center
+    gfx.setTextColor(st == 1 ? colGold : (st == 2 ? colMagenta : colCyan));
+    gfx.setCursor(76, 10);
+    gfx.print(st == 1 ? "ASW-G-08 BARBATOS" : (st == 2 ? "UNICORN [NT-D]" : "RX-78-2 GUNDAM"));
+
+    // [ SUIT >> ] Switch Button (Top-Right x=236..316)
+    gfx.fillRect(236, 3, 80, 21, gfx.color565(0x0D, 0x28, 0x3A));
+    gfx.drawRect(236, 3, 80, 21, colCyan);
+    gfx.setTextColor(colCyan);
+    gfx.setCursor(244, 10);
+    gfx.print("[SUIT >>]");
+
+    // Bottom Touch Action Bar (y = 212..239)
+    gfx.fillRect(0, 212, 320, 28, colHdr);
+    gfx.fillRect(0, 211, 320, 2, colCyan);
+
+    // 3 Bottom Action Pills: [SABER/MACE], [MISSILES], [HARO PLAY]
+    gfx.fillRect(6, 215, 98, 21, gfx.color565(0x2A, 0x09, 0x1E));
+    gfx.drawRect(6, 215, 98, 21, colMagenta);
+    gfx.setTextColor(colMint);
+    gfx.setCursor(14, 222);
+    gfx.print(st == 1 ? "[IRON MACE]" : (st == 2 ? "[TONFA NT-D]" : "[BEAM SABER]"));
+
+    gfx.fillRect(111, 215, 98, 21, gfx.color565(0x26, 0x16, 0x05));
+    gfx.drawRect(111, 215, 98, 21, colGold);
+    gfx.setTextColor(colGold);
+    gfx.setCursor(120, 222);
+    gfx.print("[MISSILE FX]");
+
+    gfx.fillRect(216, 215, 98, 21, gfx.color565(0x06, 0x2E, 0x1A));
+    gfx.drawRect(216, 215, 98, 21, colGreen);
+    gfx.setTextColor(colGreen);
+    gfx.setCursor(226, 222);
+    gfx.print("[HARO BALL]");
+
+    // Draw Static Hangar Floor & Grid ONCE
+    gfx.fillRect(0, 28, 320, 183, colBg);
+    for (int gx = 16; gx < 320; gx += 32) {
+      gfx.drawFastVLine(gx, 28, 151, colGrid);
+    }
+    gfx.drawFastHLine(0, 179, 320, colCyan);
+    for (int fx = 0; fx < 320; fx += 28) {
+      gfx.drawLine(fx, 179, fx - 18, 210, colGrid);
+    }
+  }
+
+  // 2. Autonomous AI State Machine Transition Logic
+  petActionTick++;
+  if (isNight && petAction == 0 && petIdleTicks > 40) {
+    petAction = 5; // Enter Night Sleep Guard Mode
+  } else if (!isNight && petAction == 5) {
+    petAction = 0;
+  }
+
+  // Mode Transition Cleanup: Clear residual action debris (saber slashes, missile trails) ONCE
+  if (petAction != prevPetAction) {
+    if (prevPetAction >= 2 && prevPetAction <= 4) {
+      gfx.fillRect(0, 52, 320, 159, colBg);
+      for (int gx = 16; gx < 320; gx += 32) {
+        gfx.drawFastVLine(gx, 52, 127, colGrid);
+      }
+      gfx.drawFastHLine(0, 179, 320, colCyan);
+      for (int fx = 0; fx < 320; fx += 28) {
+        gfx.drawLine(fx, 179, fx - 18, 210, colGrid);
+      }
+    }
+    prevPetAction = petAction;
+    prevPetX = -1;
+    prevDrawY = -1;
+    prevHaroX = -1;
+    prevHaroY = -1;
+    prevExhaustX = -1;
+  }
+
+  // 3. AI Behavior Execution
+  if (petAction == 0) {
+    // STATE 0: ROAMING ACROSS THE HANGAR FLOOR
+    petX += petVx;
+    if (petX <= 14) { petX = 14; petVx = 3; }
+    if (petX >= 234) { petX = 234; petVx = -3; }
+    petIdleTicks++;
+
+    // Erase previous thruster exhaust puff
+    if (prevExhaustX >= 0) {
+      restoreHangarRect(prevExhaustX - 6, 162, 22, 14, colBg, colGrid, colCyan);
+      prevExhaustX = -1;
+    }
+
+    // Draw new thruster exhaust puffs behind feet
+    int exhaustX = (petVx > 0) ? (petX - 8) : (petX + 74);
+    gfx.fillCircle(exhaustX, 168 - (petActionTick % 3) * 2, 3, colCyan);
+    gfx.fillCircle(exhaustX - petVx, 171, 2, colMint);
+    prevExhaustX = exhaustX;
+
+    // After roaming for ~70 ticks (~3.5s at 50ms), get BORED or spontaneously perform a trick!
+    if (petIdleTicks >= 70) {
+      petIdleTicks = 0;
+      petActionTick = 0;
+      uint8_t r = esp_random() % 4;
+      petAction = (r == 0) ? 1 : ((r == 1) ? 2 : ((r == 2) ? 3 : 4));
+      if (petAction == 2 || petAction == 3) soundFx.playTap();
+    }
+  } else if (petAction == 1) {
+    // STATE 1: BORED / YAWNING / WAITING FOR BUGS (~1.7s)
+    if (petActionTick > 34) {
+      petAction = 2 + (esp_random() % 3); // Spontaneously launch weapon or Haro trick!
+      petActionTick = 0;
+      soundFx.playChirp();
+    }
+  } else if (petAction >= 2 && petAction <= 4) {
+    // STATES 2..4: Action duration (~2.2s)
+    if (petActionTick > 44) {
+      petAction = 0; // Return to roaming
+      petActionTick = 0;
+    }
+  }
+
+  // 4. Live Thought Bubble / Status Banner (Redrawn ONLY when action or CPU text changes)
+  unsigned long nowMs = millis();
+  bool updateBubble = (nowMs - lastBubbleUpdateMs > 1800) || (abs(telemetry.cpu - lastPetCpuDisplay) >= 3.0f);
+  if (updateBubble) {
+    lastBubbleUpdateMs = nowMs;
+    lastPetCpuDisplay = telemetry.cpu;
+    gfx.fillRect(10, 33, 300, 18, gfx.color565(0x0D, 0x18, 0x2B));
+    gfx.drawRect(10, 33, 300, 18, (petAction == 2 || petAction == 3) ? colGold : colCyan);
+    gfx.setTextSize(1);
+    gfx.setCursor(18, 38);
+    if (petAction == 0) {
+      gfx.setTextColor(colMint);
+      gfx.printf("PATROLLING HANGAR // CPU: %.1f%% // TAP ME!", telemetry.cpu);
+    } else if (petAction == 1) {
+      gfx.setTextColor(colGold);
+      gfx.print("Zzz... BORED // NO BUGS TO SLAY... HMMM!");
+    } else if (petAction == 2) {
+      gfx.setTextColor(colMagenta);
+      gfx.print(st == 1 ? "*** BARBATOS IRON MACE GROUND SLAM!! ***" : (st == 2 ? "*** UNICORN NT-D BEAM TONFA X-SLASH! ***" : "*** RX-78-2 PINK BEAM SABER X-SLASH! ***"));
+    } else if (petAction == 3) {
+      gfx.setTextColor(colGold);
+      gfx.print(st == 1 ? ">>> 200mm SMOOTHBORE CANNON BARRAGE! <<<" : (st == 2 ? ">>> BEAM MAGNUM + SHIELD FUNNEL SALVO! <<<" : ">>> HEAD VULCANS + MICRO-MISSILE SALVO! <<<"));
+    } else if (petAction == 4) {
+      gfx.setTextColor(colGreen);
+      gfx.print("PLAYING SOCCER WITH HARO // BOING! BOING!");
+    } else {
+      gfx.setTextColor(colCyan);
+      gfx.print("[NIGHT SENSOR ACTIVE] LOW-POWER GUARD SLEEP...");
+    }
+  }
+
+  // 5. Calculate Smooth Walking Bob & Vertical Position
+  int stepCycle = (abs(petX) / 8) % 4;
+  int bobY = (petAction == 0) ? ((stepCycle == 1 || stepCycle == 3) ? -2 : 0) : 0;
+  if (petAction == 2 && ((petActionTick / 3) % 2 == 1)) bobY = -6; // Jump during melee attack!
+  int drawY = 104 + bobY;
+
+  // 6. Differential Erasing of Dirty Rectangles:
+  // Erase previous Gundam position
+  if (prevPetX >= 0 && prevDrawY >= 0) {
+    restoreHangarRect(prevPetX - 4, prevDrawY - 4, 80, 80, colBg, colGrid, colCyan);
+  }
+
+  // Erase previous Haro position
+  if (prevHaroX >= 0 && prevHaroY >= 0) {
+    restoreHangarRect(prevHaroX - 2, prevHaroY - 2, 52, 52, colBg, colGrid, colCyan);
+    prevHaroX = -1;
+    prevHaroY = -1;
+  }
+
+  // If Melee or Missiles active, restore their action dirty regions
+  if (petAction == 2) {
+    restoreHangarRect(petX + 42, drawY - 46, 96, 110, colBg, colGrid, colCyan);
+  } else if (petAction == 3) {
+    restoreHangarRect(0, drawY - 20, 320, 72, colBg, colGrid, colCyan);
+  }
+
+  // 7. Render 72x72 Shin Kidou Senki Gundam: Endless Duel Animated Mobile Suit
+  const uint16_t* activeSpr = getEndlessDuelSuitSprite(st, petAction, petActionTick, petX);
+  bool flipSuit = (petAction == 0 && petVx < 0);
+  drawGfxHdGundam(activeSpr, 72, 72, petX, drawY, st, petActionTick, -1, flipSuit);
+  prevPetX = petX;
+  prevDrawY = drawY;
+
+  // 8. Render Action Visual Effects
+  if (petAction == 1 || petAction == 5) {
+    // Floating "Zzz..." or "?!" above Gundam head
+    gfx.setTextSize(1);
+    gfx.setTextColor(colGold);
+    gfx.setCursor(petX + 68, drawY - 4 - (petActionTick % 3) * 2);
+    gfx.print(petAction == 5 ? "Zzz.." : "?! ..bored");
+  } else if (petAction == 2) {
+    // MELEE WEAPON PRACTICE (Suit-Specific Signature Weapon!)
+    int wx = petX + 58;
+    int wy = drawY + 26;
+    if (st == 0) {
+      // RX-78-2 Glowing Pink/White Beam Saber Arc!
+      int tipX = wx + 56;
+      int tipY = ((petActionTick / 2) % 2 == 0) ? (wy - 42) : (wy + 38);
+      for (int w = -3; w <= 3; w++) {
+        gfx.drawLine(wx, wy + w, tipX, tipY + w, (abs(w) <= 1) ? colWhite : colMagenta);
+      }
+      gfx.drawCircle(wx + 28, wy, 24 + (petActionTick % 3) * 6, colMagenta);
+    } else if (st == 1) {
+      // Barbatos Giant Iron Mace Ground Slam + Golden Shockwave Cracks!
+      int slamY = ((petActionTick / 2) % 2 == 0) ? (drawY - 18) : 168;
+      gfx.fillRect(wx, wy, 48, 6, gfx.color565(0x55, 0x60, 0x75));
+      gfx.fillRect(wx + 42, slamY - 14, 24, 28, gfx.color565(0x30, 0x38, 0x46));
+      gfx.drawRect(wx + 42, slamY - 14, 24, 28, colGold);
+      if (slamY >= 160) {
+        gfx.drawCircle(wx + 54, 174, (petActionTick % 4) * 12 + 8, colGold);
+        gfx.drawLine(wx + 30, 178, wx + 85, 160, colOrange);
+      }
+    } else {
+      // Unicorn NT-D Dual Beam Tonfas + Expanding Psycho-Frame Aura!
+      gfx.drawRect(petX - 6, drawY - 4, 84, 80, (petActionTick % 2 == 0) ? colMagenta : colCyan);
+      for (int s = -2; s <= 2; s++) {
+        gfx.drawLine(petX + 10, drawY + 10 + s, petX + 115, drawY + 70 + s, colMagenta);
+        gfx.drawLine(petX + 10, drawY + 70 + s, petX + 115, drawY + 10 + s, colCyan);
+      }
+    }
+  } else if (petAction == 3) {
+    // MISSILE BARRAGE / BEAM MAGNUM / SHIELD FUNNELS!
+    for (int m = 0; m < 3; m++) {
+      int prog = (petActionTick * 12 + m * 36) % 140;
+      int mx = (petX < 140) ? (petX + 70 + prog) : (petX - prog);
+      int my = drawY + 18 + m * 16 - (int)(sin(prog * 0.04f) * 14.0f);
+      if (mx > 12 && mx < 308) {
+        if (st == 2) {
+          // Unicorn Green Shield Funnel Lasers + Pink Beam Magnum Orbs
+          gfx.fillCircle(mx, my, 5, colMagenta);
+          gfx.fillCircle(mx, my, 2, colWhite);
+          gfx.drawLine(petX + 36, drawY + 24, mx, my, colGreen);
+        } else {
+          // Micro-Missiles with smoke trails + Detonation rings!
+          gfx.drawLine(petX + 48, drawY + 28, mx, my, gfx.color565(0x55, 0x66, 0x77));
+          gfx.fillRect(mx - 5, my - 3, 10, 6, colWhite);
+          gfx.fillRect(mx + 3, my - 3, 4, 6, colRed);
+          if (prog > 105) {
+            gfx.fillCircle(mx, my, 12, (petActionTick % 2 == 0) ? colOrange : colGold);
+            gfx.drawCircle(mx, my, 18, colRed);
+          }
+        }
+      }
+    }
+  } else if (petAction == 4) {
+    // HARO SOCCER PLAYTIME: Bouncing 48x48 HD Vector Haro back and forth!
+    int hx = (petX < 150) ? (petX + 82 + (petActionTick % 6) * 12) : (petX - 58 - (petActionTick % 6) * 12);
+    hx = constrain(hx, 14, 258);
+    int hy = 128 - abs((int)(petActionTick % 6) - 3) * 14;
+    const uint16_t* hSpr = (petActionTick % 2 == 0) ? haro_hd_48x48_f0 : haro_hd_48x48_f1;
+    drawGfxHdGundam(hSpr, 48, 48, hx, hy, 0, petActionTick);
+    prevHaroX = hx;
+    prevHaroY = hy;
+  }
+
+  gfx.endWrite();
 }
 
 // ============================================================================
@@ -842,6 +1454,8 @@ void pollK2soMetrics() {
         telemetry.missionTicketId = mission["ticket_id"] | 0;
         telemetry.missionFolio = mission["ticket_folio"] | "STANDBY";
         telemetry.missionStage = mission["stage"] | "IDLE";
+        telemetry.ticketStatus = mission["ticket_status"] | "idle";
+        telemetry.ticketUpdatedAt = mission["ticket_updated_at"] | "";
         telemetry.missionAttempt = mission["attempt"] | 0;
         telemetry.circuitBreakerTripped = mission["circuit_breaker"] | false;
         telemetry.elapsedSec = mission["elapsed_sec"] | 0.0f;
@@ -855,14 +1469,30 @@ void pollK2soMetrics() {
         }
       }
 
-      // Check Acoustic & Full-Screen Cutscene Events
-      bool newTicketArrived = telemetry.missionActive && (!prevMissionActive || (telemetry.missionTicketId > 0 && telemetry.missionTicketId != prevTicketId));
+      // Check Acoustic & Full-Screen Cutscene Events (Incoming, State Update, Resolved, or Circuit Breaker!)
+      bool isFirstBaseline = (prevStage == -1);
+      bool newTicketArrived = !isFirstBaseline && telemetry.missionActive && (!prevMissionActive || (telemetry.missionTicketId > 0 && telemetry.missionTicketId != prevTicketId));
+      bool ticketResolvedNow = !isFirstBaseline && (
+        (telemetry.ticketStatus.equalsIgnoreCase("resolved") && !prevTicketStatus.equalsIgnoreCase("resolved")) ||
+        (telemetry.missionStage.equalsIgnoreCase("RESOLVED") && !prevMissionStage.equalsIgnoreCase("RESOLVED"))
+      );
+      bool ticketUpdatedNow = !isFirstBaseline && !newTicketArrived && !ticketResolvedNow && (
+        (telemetry.missionActive && telemetry.missionStage != "IDLE" && telemetry.missionStage != prevMissionStage) ||
+        (prevTicketUpdatedAt.length() > 0 && telemetry.ticketUpdatedAt.length() > 0 && telemetry.ticketUpdatedAt != prevTicketUpdatedAt)
+      );
+
       if (telemetry.circuitBreakerTripped && !prevCircuitBreaker) {
         soundFx.playCircuitBreakerAlert();
         triggerGundamCutscene(3, 2, 2);
+      } else if (ticketResolvedNow) {
+        soundFx.playVictoryFanfare();
+        triggerGundamCutscene(8, prevStage, prevStage); // FX 8: Full-Screen Victory Resolved Cutscene!
       } else if (newTicketArrived) {
         soundFx.playEvolutionArpeggio();
-        triggerGundamCutscene(2, prevStage, prevStage); // Full-Screen HARO Incoming Ticket Alert!
+        triggerGundamCutscene(2, prevStage, prevStage); // FX 2: Full-Screen HARO Incoming Ticket Alert!
+      } else if (ticketUpdatedNow) {
+        soundFx.playTicketUpdateRadar();
+        triggerGundamCutscene(7, prevStage, prevStage); // FX 7: Full-Screen Ticket State Update Cutscene!
       }
 
       // Track Stage Evolutions & Fire Full-Screen Gundam Cutscenes
@@ -870,14 +1500,17 @@ void pollK2soMetrics() {
       if (prevStage != -1 && curStage > prevStage) {
         soundFx.playEvolutionArpeggio();
         if (curStage == 2) {
-          triggerGundamCutscene(0, prevStage, curStage); // Full-Screen Exia Trans-Am Burst!
+          triggerGundamCutscene(0, prevStage, curStage); // Full-Screen Unicorn NT-D Burst!
         } else {
-          triggerGundamCutscene(1, prevStage, curStage); // Full-Screen G-Frame Evolution!
+          triggerGundamCutscene(1, prevStage, curStage); // Full-Screen G-Frame Evolution to Barbatos!
         }
       }
       prevStage = curStage;
       prevMissionActive = telemetry.missionActive;
       prevTicketId = telemetry.missionTicketId;
+      prevMissionStage = telemetry.missionStage;
+      prevTicketStatus = telemetry.ticketStatus;
+      prevTicketUpdatedAt = telemetry.ticketUpdatedAt;
       prevCircuitBreaker = telemetry.circuitBreakerTripped;
     } else {
       telemetry.serverOnline = false;
@@ -1048,6 +1681,70 @@ void loop() {
       lastBadgeFrame = now;
       renderConferenceBadgeTick();
     }
+    // Keep polling K-2SO so incoming tickets or resolved tickets still fire live cutscenes!
+    if (now - lastMetricsPoll >= POLL_INTERVAL_MS || forcePollNow) {
+      lastMetricsPoll = now;
+      forcePollNow = false;
+      pollK2soMetrics();
+    }
+    delay(5);
+    return;
+  }
+
+  // 0.7 If in Full-Screen 320x240 Interactive Gundam Roaming Pet Mode:
+  if (petRoamingMode) {
+    uint16_t tx, ty;
+    static bool wasPetTouched = false;
+    bool isPetTouched = gfx.getTouch(&tx, &ty);
+    if (isPetTouched && !wasPetTouched && now > lastPetTouchMs) {
+      lastPetTouchMs = now + 260;
+      if (ty <= 34 && tx <= 84) {
+        // Top-Left [ < BACK ] Button -> Return to 4-Tab Dashboard
+        exitPetRoamingMode();
+        wasPetTouched = isPetTouched;
+        return;
+      } else if (ty <= 34 && tx >= 220) {
+        // Top-Right [ SUIT >> ] Button -> Cycle RX-78-2 -> BARBATOS -> UNICORN NT-D!
+        soundFx.playEvolutionArpeggio();
+        int curS = cyberUI.getCurrentStage();
+        if (curS < 0 || curS > 2) curS = 0;
+        int nextS = (curS + 1) % 3;
+        cyberUI.setCurrentStage(nextS);
+        petNeedsStaticInit = true;
+        petAction = 2; // Perform signature weapon pose on suit switch!
+        petActionTick = 0;
+      } else if (ty >= 204) {
+        // Bottom 3 Action Buttons: [BEAM SABER/MACE], [MISSILE FX], [HARO BALL]
+        soundFx.playChirp();
+        if (tx < 108) petAction = 2;
+        else if (tx < 212) petAction = 3;
+        else petAction = 4;
+        petActionTick = 0;
+        petIdleTicks = 0;
+      } else {
+        // Tapped the Hangar Arena or Gundam directly -> Random Signature Trick!
+        soundFx.playChirp();
+        petAction = 2 + (esp_random() % 3); // 2=Weapon, 3=Missiles, 4=Haro Ball
+        petActionTick = 0;
+        petIdleTicks = 0;
+      }
+    }
+    wasPetTouched = isPetTouched;
+
+    // Render 320x240 Roaming Pet Frame at 50ms cadence (~20 FPS buttery smooth zero-flicker differential)
+    static unsigned long lastPetFrame = 0;
+    if (now - lastPetFrame >= 50) {
+      lastPetFrame = now;
+      renderPetRoamingTick();
+    }
+
+    // Keep polling K-2SO so live Ticket Arrivals / Updates / Resolutions interrupt Pet Mode!
+    if (now - lastMetricsPoll >= POLL_INTERVAL_MS || forcePollNow) {
+      lastMetricsPoll = now;
+      forcePollNow = false;
+      pollK2soMetrics();
+    }
+    updateRgbUnderglow();
     delay(5);
     return;
   }
@@ -1057,7 +1754,7 @@ void loop() {
 
   // 2. Tick Multi-Color Pet Sprite & Sanctuary Animation (350ms cadence)
   static unsigned long lastAnimTick = 0;
-  if (now - lastAnimTick >= 350) {
+  if (now - lastAnimTick >= 125) {
     lastAnimTick = now;
     cyberUI.tickAnimation();
   }

@@ -94,6 +94,27 @@ public:
       delay(20);
     }
   }
+
+  void playTicketUpdateRadar() {
+    if (_muted) return;
+    // Crisp 3-note Gundam Target-Lock Radar Ping
+    playTone(2200, 35);
+    delay(25);
+    playTone(2200, 35);
+    delay(25);
+    playTone(3300, 65);
+  }
+
+  void playVictoryFanfare() {
+    if (_muted) return;
+    // Triumphant 6-note Arcade Victory Fanfare (G5 - C6 - E6 - G6 - E6 - C7)
+    const int notes[] = { 784, 1046, 1318, 1568, 1318, 2093 };
+    const int durs[]  = {  50,   50,   50,   90,   50,  140 };
+    for (int i = 0; i < 6; i++) {
+      playTone(notes[i], durs[i]);
+      delay(25);
+    }
+  }
 };
 
 extern CyberSynth soundFx;

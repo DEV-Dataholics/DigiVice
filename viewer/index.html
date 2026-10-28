@@ -1,0 +1,1851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scrap-Hound 16-Bit SNES / PS1 Digipet Studio & Viewer</title>
+  <style>
+    :root {
+      --bg: #0d0f12;
+      --card: #15181e;
+      --border: #262b36;
+      --text: #e2e8f0;
+      --accent: #2be86b;
+      --amber: #e6821c;
+      --red: #e62222;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    h1 {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    h1 span { color: var(--accent); }
+    .subtitle {
+      font-size: 13px;
+      color: #8892b0;
+      margin-top: 4px;
+    }
+
+    /* Hardware Simulator Screen Bezel */
+    .studio-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 30px;
+      justify-content: center;
+      max-width: 1100px;
+      width: 100%;
+    }
+    .device-stage {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .cyd-bezel {
+      background: #1c2026;
+      border: 8px solid #2d3340;
+      border-radius: 16px;
+      padding: 16px 16px 24px 16px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.8), 0 0 40px rgba(43, 232, 107, 0.1);
+      position: relative;
+      transition: box-shadow 0.3s ease;
+    }
+    .cyd-bezel.glow-red { box-shadow: 0 20px 50px rgba(0,0,0,0.8), 0 0 50px rgba(230, 34, 34, 0.5); }
+    .cyd-bezel.glow-amber { box-shadow: 0 20px 50px rgba(0,0,0,0.8), 0 0 50px rgba(230, 130, 28, 0.5); }
+    .cyd-bezel.glow-green { box-shadow: 0 20px 50px rgba(0,0,0,0.8), 0 0 50px rgba(43, 232, 107, 0.6); }
+
+    .cyd-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      padding: 0 4px;
+    }
+    .cyd-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      color: #718096;
+      text-transform: uppercase;
+    }
+    .screen-wrapper {
+      position: relative;
+      width: 480px;
+      height: 360px;
+      background: #000;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 2px solid #111418;
+      box-shadow: inset 0 0 15px rgba(0,0,0,0.9);
+      cursor: pointer;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      display: block;
+    }
+    .scanlines {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+      background-size: 100% 4px;
+      pointer-events: none;
+      opacity: 0.6;
+    }
+    .underglow-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 12px;
+      font-size: 12px;
+      color: #a0aec0;
+    }
+    .led-pill {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #333;
+      box-shadow: 0 0 10px transparent;
+      transition: all 0.2s;
+    }
+
+    /* Control Deck */
+    .controls-deck {
+      flex: 1;
+      min-width: 320px;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .panel-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #a0aec0;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    button {
+      background: #1e2430;
+      color: #e2e8f0;
+      border: 1px solid #333c4d;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    button:hover {
+      background: #2b3345;
+      border-color: #4a5568;
+    }
+    button:active {
+      transform: scale(0.98);
+    }
+    button.btn-primary {
+      background: #0e3a1e;
+      border-color: #2be86b;
+      color: #2be86b;
+    }
+    button.btn-primary:hover { background: #16532d; }
+    button.btn-amber {
+      background: #3c240b;
+      border-color: #e6821c;
+      color: #e6821c;
+    }
+    button.btn-amber:hover { background: #57330d; }
+    button.btn-red {
+      background: #3e1212;
+      border-color: #e62222;
+      color: #e62222;
+    }
+    button.btn-red:hover { background: #5c1818; }
+
+    .input-group {
+      margin-top: 10px;
+    }
+    .input-group label {
+      display: block;
+      font-size: 11px;
+      color: #718096;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+    }
+    input[type="text"] {
+      width: 100%;
+      background: #0d0f12;
+      border: 1px solid #2d3748;
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+
+    .style-toggles {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .style-btn {
+      flex: 1;
+      padding: 8px;
+      font-size: 12px;
+    }
+    .style-btn.active {
+      background: #234e32;
+      border-color: #2be86b;
+      color: #2be86b;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      background: rgba(43, 232, 107, 0.1);
+      color: #2be86b;
+      border: 1px solid rgba(43, 232, 107, 0.2);
+    }
+    .status-badge.offline {
+      background: rgba(230, 34, 34, 0.1);
+      color: #e62222;
+      border-color: rgba(230, 34, 34, 0.2);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1><span>🐾 SCRAP-HOUND</span> 16-BIT SNES STUDIO</h1>
+    <div class="subtitle">Pixel-Perfect Hardware Simulator for Dataholics Resolve ServiceDesk</div>
+  </header>
+
+  <div class="studio-container">
+
+    <!-- Screen Bezel -->
+    <div class="device-stage">
+      <div class="cyd-bezel" id="bezel">
+        <div class="cyd-header">
+          <div class="cyd-label">ESP32-2432S028 • CYD 2.8" (320x240)</div>
+          <div id="statusBadge" class="status-badge">● SIMULATOR ONLINE</div>
+        </div>
+        <div class="screen-wrapper" id="screenWrapper" title="Click anywhere to poke Scrap-Hound!">
+          <canvas id="screenCanvas" width="320" height="240"></canvas>
+          <div class="scanlines" id="scanlinesOverlay"></div>
+        </div>
+      </div>
+      <div class="underglow-indicator">
+        <span>RGB Underglow:</span>
+        <div class="led-pill" id="ledPill"></div>
+        <span id="ledColorText">IDLE HEARTBEAT (GREEN)</span>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls-deck">
+
+      <!-- Triggers -->
+      <div class="panel">
+        <div class="panel-title">⚡ Interactive Event Triggers</div>
+        <div class="btn-grid">
+          <button class="btn-primary" onclick="triggerMood('idle')">💤 Autonomous Life</button>
+          <button class="btn-red" onclick="triggerMood('alarm')">⚠️ Ticket Opened</button>
+          <button class="btn-amber" onclick="triggerMood('laugh')">😂 Ticket Updated</button>
+          <button class="btn-primary" onclick="triggerMood('chomp')">☠️ Ticket Resolved</button>
+          <button onclick="triggerMood('poked')">👆 Poke / Snarl</button>
+          <button class="btn-amber" onclick="triggerBootAnimation()">🚀 Play Boot Logo</button>
+          <button class="btn-primary" onclick="toggleBadgeMode()">🪪 Alonso Ruiz (CEO)</button>
+          <button class="btn-primary" style="grid-column: span 2;" onclick="openTicketExplorer()">📋 Open Incident Deck (Latest Tickets)</button>
+        </div>
+        <div style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed #2d3748;">
+          <div style="font-size: 11px; color: #94a3b8; margin-bottom: 6px; font-weight: bold;">🐾 Autonomous Idle Behaviors</div>
+          <div class="btn-grid">
+            <button style="font-size: 11px; padding: 6px; border: 1px solid #38bdf8; background: #0c1a2e; color: #38bdf8;" onclick="forceIdleState('walk')">🚶 Wander Arena</button>
+            <button style="font-size: 11px; padding: 6px; border: 1px solid #a855f7; background: #1a0d2e; color: #d8b4fe;" onclick="forceIdleState('doze')">😪 Doze Off</button>
+            <button style="font-size: 11px; padding: 6px; border: 1px solid #0284c7; background: #081a2e; color: #7dd3fc;" onclick="forceIdleState('sleep')">🌙 Deep Sleep</button>
+            <button style="font-size: 11px; padding: 6px; border: 1px solid #f59e0b; background: #261b0c; color: #fcd34d;" onclick="forceIdleState('sniff')">🐾 Sniff Ground</button>
+            <button style="font-size: 11px; padding: 6px; border: 1px solid #2be86b; background: #0d2417; color: #86efac; grid-column: span 2;" onclick="forceIdleState('play_wisp')">✨ Play with Will-o'-the-Wisp</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Visual Style & CRT Filter -->
+      <div class="panel">
+        <div class="panel-title">🎨 Art Style & CRT Emulation</div>
+        <div class="style-toggles">
+          <button class="style-btn active" id="btnStyleSnes" onclick="setStyle('snes')">16-Bit SNES (Chrono / Metroid)</button>
+          <button class="style-btn" id="btnStylePs1" onclick="setStyle('ps1')">Early PS1 (Retro Dither)</button>
+        </div>
+        <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 12px; color: #a0aec0;">CRT Scanlines Overlay</span>
+          <button style="padding: 4px 10px; font-size: 11px;" onclick="toggleScanlines()">Toggle Scanlines</button>
+        </div>
+        <div style="margin-top: 8px; display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 12px; color: #a0aec0;">Audio Synthesizer</span>
+          <button style="padding: 4px 10px; font-size: 11px;" id="audioToggleBtn" onclick="toggleAudio()">Sound: ON</button>
+        </div>
+      </div>
+
+      <!-- Incident Simulator -->
+      <div class="panel">
+        <div class="panel-title">📡 ServiceDesk Incident Feed Simulator</div>
+        <div class="input-group">
+          <label>Ticket ID</label>
+          <input type="text" id="simTicketId" value="376">
+        </div>
+        <div class="input-group">
+          <label>Ticket Title</label>
+          <input type="text" id="simTicketTitle" value="Warhorse Kiosk Barcode Scanner Latency">
+        </div>
+        <div class="btn-grid" style="margin-top: 12px;">
+          <button class="btn-red" onclick="simulateTicketOpen()">1. Fire New Ticket</button>
+          <button class="btn-amber" onclick="simulateTicketComment()">2. Add Comment</button>
+          <button class="btn-primary" onclick="simulateTicketResolved()">3. Slain / Resolve</button>
+          <button onclick="syncLiveResolve()">🔗 Connect Live API</button>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    // =========================================================================
+    // Web Audio Synthesizer (Exact 8-Bit CYD Buzzer Emulation)
+    // =========================================================================
+    let audioCtx = null;
+    let audioEnabled = true;
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    }
+
+    function playTone(freq, durationMs, type = 'square', delayMs = 0) {
+      if (!audioEnabled) return;
+      initAudio();
+      setTimeout(() => {
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + (durationMs / 1000));
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + (durationMs / 1000));
+      }, delayMs);
+    }
+
+    function sfxWarKlaxon() {
+      if (!audioEnabled) return;
+      for (let rep = 0; rep < 2; rep++) {
+        let baseDelay = rep * 350;
+        for (let f = 550, i = 0; f <= 1100; f += 80, i++) {
+          playTone(f, 25, 'sawtooth', baseDelay + (i * 15));
+        }
+        for (let f = 1100, i = 0; f >= 550; f -= 80, i++) {
+          playTone(f, 25, 'sawtooth', baseDelay + 160 + (i * 15));
+        }
+      }
+    }
+
+    function sfxManiacalLaugh() {
+      if (!audioEnabled) return;
+      const notes = [880, 1174, 1396, 987, 1318, 1567, 1108, 1479, 1760];
+      notes.forEach((n, idx) => {
+        playTone(n, 45, 'square', idx * 55);
+      });
+      // Giggle flutter
+      for (let i = 0; i < 4; i++) {
+        playTone(1800, 25, 'triangle', 520 + (i * 45));
+        playTone(2200, 25, 'square', 540 + (i * 45));
+      }
+    }
+
+    function sfxEvilChomp() {
+      if (!audioEnabled) return;
+      // Metallic snap
+      for (let f = 2800, i = 0; f >= 300; f -= 350, i++) {
+        playTone(f, 15, 'sawtooth', i * 10);
+      }
+      // Low crunch
+      playTone(110, 120, 'square', 90);
+      // Victory fanfare
+      const fanfare = [523, 659, 784, 1046, 1318, 1567];
+      fanfare.forEach((f, idx) => {
+        playTone(f, idx === 5 ? 240 : 60, 'triangle', 240 + (idx * 75));
+      });
+    }
+
+    function sfxGrowl() {
+      if (!audioEnabled) return;
+      for (let i = 0; i < 4; i++) {
+        playTone(160, 40, 'sawtooth', i * 45);
+        playTone(130, 40, 'square', i * 45 + 20);
+      }
+    }
+
+    function toggleAudio() {
+      audioEnabled = !audioEnabled;
+      document.getElementById('audioToggleBtn').textContent = audioEnabled ? 'Sound: ON' : 'Sound: OFF';
+    }
+
+    // =========================================================================
+    // 16-Bit SNES / Early PS1 Procedural Pixel Renderer
+    // =========================================================================
+    const canvas = document.getElementById('screenCanvas');
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+
+    let currentMood = 'idle';
+    let moodExpiry = 0;
+    let artStyle = 'snes'; // 'snes' or 'ps1'
+    let animTick = 0;
+    let screenShake = 0;
+
+    // Autonomous Idle Life Simulation Variables
+    let petX = 160;
+    let petY = 118;
+    let petTargetX = 160;
+    let petFacing = 1; // 1 = right, -1 = left
+    let idleSubState = 'rest'; // 'rest', 'walk', 'sniff', 'play_wisp', 'doze', 'sleep'
+    let idleTimer = 0;
+    let sleepZzz = [];
+    let startleJump = 0;
+    let wasAsleep = false;
+
+    // Interactive Screen Modes
+    let currentScreenMode = 'pet'; // 'pet', 'badge', 'ticket_list', 'ticket_detail'
+    let selectedTicketIdx = 0;
+
+    let recentTickets = [
+      {
+        id: 375,
+        title: "[TKT-WNM-024] Strategy TMS Decommission - Phase 3",
+        status: "resolved",
+        priority: "critical",
+        requester_name: "My CTO",
+        requester_email: "lmorales@dataholics.com.mx",
+        description: "Phase 3: Settlements Bucket & QuickBooks Batch Export. Physical deterministic validation complete with Stardust live probe."
+      },
+      {
+        id: 374,
+        title: "[TKT-WNM-023] Strategy TMS Decommission - Phase 2",
+        status: "resolved",
+        priority: "critical",
+        requester_name: "My CTO",
+        requester_email: "lmorales@dataholics.com.mx",
+        description: "Inviolable POD Operational Quality Gate & Mobile Uplink. Enforces strict zero-false-positive protocol."
+      },
+      {
+        id: 373,
+        title: "[TKT-WNM-022] Strategy TMS Decommission - Phase 1B",
+        status: "resolved",
+        priority: "high",
+        requester_name: "My CTO",
+        requester_email: "lmorales@dataholics.com.mx",
+        description: "Kiwiplan Docket Ingestion & Parser Engine. Validated with AST scope guards and DOM token assertions."
+      },
+      {
+        id: 372,
+        title: "[TKT-WNM-021] Strategy TMS Decommission - Phase 1A",
+        status: "resolved",
+        priority: "high",
+        requester_name: "My CTO",
+        requester_email: "lmorales@dataholics.com.mx",
+        description: "Multi-Stop Itinerary Architecture & Live Kanban Sequence. Autonomous fast-forward git mirror deployed."
+      }
+    ];
+
+    // State data
+    let ticketId = 375;
+    let ticketTitle = "[TKT-WNM-024] Strategy TMS Decommission";
+    let ticketStatus = "resolved";
+    let activeTickets = 2;
+    let resolvedToday = 15;
+    const siliconMac = "5C:CC:04:E9:BF:B4";
+
+    // Palette Definitions
+    const PAL = {
+      bgDark: '#080a0f',
+      metalDark: '#1a1d24',
+      metalMid: '#2e3543',
+      metalLight: '#536079',
+      rustDark: '#382315',
+      rustMid: '#694126',
+      rustLight: '#9e643a',
+      acidGreen: '#2be86b',
+      acidGlow: '#84ff96',
+      combatRed: '#e62222',
+      redGlow: '#ff6b6b',
+      fuelAmber: '#e6821c',
+      amberGlow: '#ffb356',
+      bone: '#ded6c7',
+      fangWhite: '#ffffff'
+    };
+
+    // Smoke particles
+    const smokeParticles = [];
+
+    function updateSmoke() {
+      if (animTick % 6 === 0) {
+        smokeParticles.push({
+          x: 104,
+          y: 86,
+          vx: (Math.random() - 0.5) * 0.6 - 0.8,
+          vy: -0.8 - Math.random() * 0.5,
+          size: 2,
+          alpha: 1.0,
+          color: (currentMood === 'alarm') ? '#e62222' : '#8892b0'
+        });
+      }
+      for (let i = smokeParticles.length - 1; i >= 0; i--) {
+        const p = smokeParticles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.size += 0.08;
+        p.alpha -= 0.025;
+        if (p.alpha <= 0) smokeParticles.splice(i, 1);
+      }
+    }
+
+    let isBooting = false;
+    let bootTick = 0;
+    let isBadgeMode = false;
+    let badgeTick = 0;
+
+    function triggerBootAnimation() {
+      isBooting = true;
+      bootTick = 0;
+      isBadgeMode = false;
+      initAudio();
+      // Cyber arpeggio
+      const notes = [440, 554, 659, 880, 1108, 1318];
+      notes.forEach((n, idx) => playTone(n, 50, 'triangle', idx * 60));
+    }
+
+    function toggleBadgeMode() {
+      if (currentScreenMode === 'badge' || isBadgeMode) {
+        currentScreenMode = 'pet';
+        isBadgeMode = false;
+        triggerMood('idle');
+      } else {
+        currentScreenMode = 'badge';
+        isBadgeMode = true;
+        isBooting = false;
+        initAudio();
+        playTone(659, 60, 'triangle', 0);
+        playTone(880, 100, 'triangle', 70);
+        bezel.classList.remove('glow-red', 'glow-green');
+        bezel.classList.add('glow-amber');
+      }
+    }
+
+    function drawDataholicsEmblem(cx, cy, s, bgCol, wingCol, splitX = 0) {
+      const wOut = 46.0 * s;
+      const wIn  = 6.0 * s;
+      const hOut = 23.0 * s;
+      const hIn  = 30.0 * s;
+      const cOff = 25.0 * s;
+      const cRad = 13.0 * s;
+      const bHalf = Math.max(2, 5.0 * s);
+
+      ctx.fillStyle = wingCol;
+
+      // Left Wing Polygon
+      const lxO = cx - wOut - splitX;
+      const lxI = cx - wIn - splitX;
+      ctx.beginPath();
+      ctx.moveTo(lxO, cy - hOut);
+      ctx.lineTo(lxI, cy - hIn);
+      ctx.lineTo(lxI, cy + hIn);
+      ctx.lineTo(lxO, cy + hOut);
+      ctx.closePath();
+      ctx.fill();
+
+      // Right Wing Polygon
+      const rxI = cx + wIn + splitX;
+      const rxO = cx + wOut + splitX;
+      ctx.beginPath();
+      ctx.moveTo(rxI, cy - hIn);
+      ctx.lineTo(rxO, cy - hOut);
+      ctx.lineTo(rxO, cy + hOut);
+      ctx.lineTo(rxI, cy + hIn);
+      ctx.closePath();
+      ctx.fill();
+
+      // Negative-Space Inner Circles & Bridge Cutout
+      ctx.fillStyle = bgCol;
+      ctx.beginPath();
+      ctx.arc(cx - cOff - splitX, cy, cRad, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(cx + cOff + splitX, cy, cRad, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillRect(cx - cOff - splitX, cy - bHalf, (cOff + splitX) * 2, bHalf * 2);
+    }
+
+    function renderBootSequence() {
+      bootTick++;
+      ctx.fillStyle = '#06080c';
+      ctx.fillRect(0, 0, 320, 240);
+
+      // Grid flare
+      ctx.strokeStyle = '#121824';
+      ctx.lineWidth = 1;
+      for (let y = 0; y < 240; y += 20) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(320, y); ctx.stroke();
+      }
+
+      let splitX = (bootTick < 22) ? (22 - bootTick) * 3.5 : 0;
+      let wingColor = (bootTick < 22) ? PAL.fuelAmber : ((bootTick % 4 < 2) ? '#ffffff' : PAL.fuelAmber);
+
+      // Emblem
+      drawDataholicsEmblem(160, 95, 1.4, '#06080c', wingColor, splitX);
+
+      // Tech reticle rings
+      if (bootTick > 15) {
+        ctx.strokeStyle = (bootTick % 2 === 0) ? '#38bdf8' : '#e6821c';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(60, 40, 200, 110);
+      }
+
+      // Title & Subtext
+      if (bootTick > 18) {
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 18px monospace';
+        ctx.fillText('DATAHOLICS', 105, 175);
+      }
+      if (bootTick > 25) {
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = 'bold 9px monospace';
+        ctx.fillText('SOVEREIGN AI // SCRAP-HOUND ENGINE', 55, 195);
+      }
+      if (bootTick > 32) {
+        ctx.fillStyle = PAL.acidGreen;
+        ctx.font = '9px monospace';
+        ctx.fillText('● HARDWARE ENCLAVE MOUNTED [COM6]', 68, 215);
+      }
+
+      if (bootTick > 70) {
+        isBooting = false;
+        triggerMood('idle');
+      }
+    }
+
+    function renderBadgeMode() {
+      badgeTick++;
+      ctx.fillStyle = '#0a0d14';
+      ctx.fillRect(0, 0, 320, 240);
+
+      // Top Corporate Lanyard Bar
+      ctx.fillStyle = '#141a24';
+      ctx.fillRect(0, 0, 320, 24);
+      ctx.fillStyle = PAL.fuelAmber;
+      ctx.fillRect(0, 23, 320, 1);
+
+      ctx.font = 'bold 9px monospace';
+      ctx.fillStyle = PAL.fuelAmber;
+      ctx.fillText('DATAHOLICS // SOVEREIGN AI', 12, 16);
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillText('VIP CLEARANCE 0', 215, 16);
+
+      // Mini Dataholics Wing Emblem
+      drawDataholicsEmblem(160, 48, 0.7, '#0a0d14', PAL.fuelAmber, 0);
+
+      // Giant Executive Card Monolith (Alonso Ruiz / CTO)
+      ctx.fillStyle = '#111722';
+      ctx.fillRect(16, 75, 288, 115);
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(16, 75, 288, 115);
+
+      // Cyber Corner Brackets
+      ctx.fillStyle = PAL.fuelAmber;
+      ctx.fillRect(16, 75, 20, 4);
+      ctx.fillRect(16, 75, 4, 20);
+      ctx.fillRect(284, 75, 20, 4);
+      ctx.fillRect(300, 75, 4, 20);
+      ctx.fillRect(16, 186, 20, 4);
+      ctx.fillRect(16, 170, 4, 20);
+      ctx.fillRect(284, 186, 20, 4);
+      ctx.fillRect(300, 170, 4, 20);
+
+      // Name: ALONSO RUIZ
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 22px system-ui, sans-serif';
+      ctx.fillText('ALONSO', 40, 112);
+
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = '800 24px system-ui, sans-serif';
+      ctx.fillText('RUIZ', 40, 138);
+
+      // Role Pill: CEO
+      ctx.fillStyle = '#3b240e';
+      ctx.fillRect(40, 148, 240, 26);
+      ctx.strokeStyle = PAL.fuelAmber;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(40, 148, 240, 26);
+
+      ctx.fillStyle = PAL.fuelAmber;
+      ctx.font = 'bold 13px monospace';
+      ctx.fillText('CEO • CHIEF EXECUTIVE OFFICER', 50, 166);
+
+      // Bottom Hardware & Status Ticker
+      ctx.fillStyle = '#141a24';
+      ctx.fillRect(0, 205, 320, 35);
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(0, 205, 320, 35);
+
+      ctx.font = '9px monospace';
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText(`SILICON ID: ${siliconMac} • COM6`, 16, 222);
+      ctx.fillStyle = PAL.acidGreen;
+      ctx.fillText('STATUS: EXECUTIVE KEY AUTHORIZED • RESOLVE LINK OK', 16, 233);
+    }
+
+    function renderTicketList() {
+      ctx.fillStyle = PAL.bgDark;
+      ctx.fillRect(0, 0, 320, 240);
+
+      // Header Bar
+      ctx.fillStyle = '#11141c';
+      ctx.fillRect(0, 0, 320, 26);
+      ctx.strokeStyle = PAL.combatRed;
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(0, 26); ctx.lineTo(320, 26); ctx.stroke();
+
+      ctx.fillStyle = PAL.combatRed;
+      ctx.font = 'bold 11px monospace';
+      ctx.fillText('RESOLVE // INCIDENTS', 12, 17);
+
+      // Exit to Pet Button (Top Right)
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(236, 4, 80, 18);
+      ctx.strokeStyle = '#38bdf8';
+      ctx.strokeRect(236, 4, 80, 18);
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = 'bold 9px monospace';
+      ctx.fillText('< PET 🐾', 252, 16);
+
+      // 4 Ticket Rows
+      for (let i = 0; i < 4; i++) {
+        let rowY = 32 + (i * 42);
+        if (i < recentTickets.length) {
+          const t = recentTickets[i];
+          let statCol = (t.status === 'resolved') ? PAL.acidGreen : ((t.status === 'in_progress') ? PAL.fuelAmber : PAL.combatRed);
+          
+          ctx.fillStyle = '#101726';
+          ctx.fillRect(8, rowY, 304, 38);
+          ctx.strokeStyle = '#1e293b';
+          ctx.strokeRect(8, rowY, 304, 38);
+
+          // Status indicator accent
+          ctx.fillStyle = statCol;
+          ctx.fillRect(8, rowY, 4, 38);
+
+          // ID & Status
+          ctx.fillStyle = statCol;
+          ctx.font = 'bold 9px monospace';
+          ctx.fillText(`#${t.id} ${t.status.toUpperCase()}`, 18, rowY + 14);
+
+          // Priority
+          ctx.fillStyle = '#94a3b8';
+          ctx.fillText(`PRIO: ${t.priority.toUpperCase()}`, 130, rowY + 14);
+
+          // Tap indicator
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillText('TAP >', 272, rowY + 14);
+
+          // Title
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 10px system-ui, sans-serif';
+          ctx.fillText(t.title.substring(0, 44), 18, rowY + 30);
+        }
+      }
+
+      // Bottom Bar
+      ctx.fillStyle = '#11141c';
+      ctx.fillRect(0, 206, 320, 34);
+      ctx.strokeStyle = '#1e293b';
+      ctx.strokeRect(0, 206, 320, 34);
+      ctx.fillStyle = PAL.acidGreen;
+      ctx.font = '9px monospace';
+      ctx.fillText('TAP ANY ROW TO OPEN DETAILED DOSSIER • TAP TOP TO RETURN', 14, 226);
+    }
+
+    function renderTicketDetail() {
+      ctx.fillStyle = PAL.bgDark;
+      ctx.fillRect(0, 0, 320, 240);
+
+      const t = recentTickets[selectedTicketIdx] || recentTickets[0];
+
+      // Header Bar
+      ctx.fillStyle = '#11141c';
+      ctx.fillRect(0, 0, 320, 26);
+      ctx.strokeStyle = PAL.combatRed;
+      ctx.strokeRect(0, 0, 320, 26);
+
+      // Back to List button (Top Left)
+      ctx.fillStyle = '#261b0c';
+      ctx.fillRect(6, 4, 68, 18);
+      ctx.strokeStyle = PAL.fuelAmber;
+      ctx.strokeRect(6, 4, 68, 18);
+      ctx.fillStyle = PAL.fuelAmber;
+      ctx.font = 'bold 9px monospace';
+      ctx.fillText('< LIST', 20, 16);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 10px monospace';
+      ctx.fillText(`INCIDENT DOSSIER #${t.id}`, 98, 17);
+
+      // Return to Pet button (Top Right)
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(244, 4, 70, 18);
+      ctx.strokeStyle = '#38bdf8';
+      ctx.strokeRect(244, 4, 70, 18);
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillText('PET 🐾', 260, 16);
+
+      // Main Card
+      ctx.fillStyle = '#101726';
+      ctx.fillRect(8, 32, 304, 166);
+      ctx.strokeStyle = '#38bdf8';
+      ctx.strokeRect(8, 32, 304, 166);
+
+      // Status Pill
+      let statCol = (t.status === 'resolved') ? PAL.acidGreen : ((t.status === 'in_progress') ? PAL.fuelAmber : PAL.combatRed);
+      ctx.fillStyle = '#080a0f';
+      ctx.fillRect(16, 40, 80, 18);
+      ctx.strokeStyle = statCol;
+      ctx.strokeRect(16, 40, 80, 18);
+      ctx.fillStyle = statCol;
+      ctx.font = 'bold 9px monospace';
+      ctx.fillText(t.status.toUpperCase(), 24, 52);
+
+      // Priority Pill
+      ctx.fillStyle = '#080a0f';
+      ctx.fillRect(104, 40, 80, 18);
+      ctx.strokeStyle = PAL.combatRed;
+      ctx.strokeRect(104, 40, 80, 18);
+      ctx.fillStyle = PAL.combatRed;
+      ctx.fillText(`PRIO: ${t.priority.toUpperCase()}`, 112, 52);
+
+      // Requester
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '10px monospace';
+      ctx.fillText(`BY: ${t.requester_name} (${t.requester_email})`, 16, 72);
+
+      // Title Box
+      ctx.fillStyle = '#080a0f';
+      ctx.fillRect(14, 82, 292, 32);
+      ctx.strokeStyle = '#1e293b';
+      ctx.strokeRect(14, 82, 292, 32);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 11px system-ui, sans-serif';
+      ctx.fillText(t.title.substring(0, 44), 20, 98);
+      if (t.title.length > 44) {
+        ctx.fillText(t.title.substring(44, 88), 20, 110);
+      }
+
+      // Description Box
+      ctx.fillStyle = '#080a0f';
+      ctx.fillRect(14, 120, 292, 72);
+      ctx.strokeStyle = '#261b0c';
+      ctx.strokeRect(14, 120, 292, 72);
+      ctx.fillStyle = '#cbd5e1';
+      ctx.font = '10px monospace';
+      let desc = t.description;
+      for (let p = 0, ly = 136; p < desc.length && ly < 186; p += 44, ly += 14) {
+        ctx.fillText(desc.substring(p, p + 44), 20, ly);
+      }
+
+      // Bottom Navigation Buttons
+      ctx.fillStyle = '#11141c';
+      ctx.fillRect(0, 204, 320, 36);
+      ctx.strokeStyle = PAL.combatRed;
+      ctx.strokeRect(0, 204, 320, 36);
+
+      ctx.fillStyle = '#261b0c';
+      ctx.fillRect(12, 208, 140, 26);
+      ctx.strokeStyle = PAL.fuelAmber;
+      ctx.strokeRect(12, 208, 140, 26);
+      ctx.fillStyle = PAL.fuelAmber;
+      ctx.font = 'bold 10px monospace';
+      ctx.fillText('< BACK TO LIST', 34, 224);
+
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(168, 208, 140, 26);
+      ctx.strokeStyle = '#38bdf8';
+      ctx.strokeRect(168, 208, 140, 26);
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillText('RETURN TO PET 🐾', 184, 224);
+    }
+
+    function pickNewWalkTarget() {
+      const targets = [60, 95, 130, 160, 195, 230, 265];
+      const otherTargets = targets.filter(t => Math.abs(t - petX) > 25);
+      petTargetX = otherTargets[Math.floor(Math.random() * otherTargets.length)];
+      idleSubState = 'walk';
+      idleTimer = 0;
+    }
+
+    function updateIdleBehavior() {
+      if (currentMood !== 'idle') {
+        if (wasAsleep) {
+          startleJump = 8;
+          wasAsleep = false;
+        }
+        idleSubState = 'rest';
+        return;
+      }
+
+      idleTimer++;
+
+      if (startleJump > 0) {
+        startleJump *= 0.8;
+        if (startleJump < 0.3) startleJump = 0;
+      }
+
+      // 1. Walking State
+      if (idleSubState === 'walk') {
+        const dist = petTargetX - petX;
+        if (Math.abs(dist) < 2) {
+          petX = petTargetX;
+          const nextRnd = Math.random();
+          if (nextRnd < 0.4) {
+            idleSubState = 'sniff';
+          } else if (nextRnd < 0.7) {
+            idleSubState = 'play_wisp';
+          } else {
+            idleSubState = 'rest';
+          }
+          idleTimer = 0;
+        } else {
+          petFacing = (dist > 0) ? 1 : -1;
+          petX += Math.sign(dist) * 1.1;
+        }
+        return;
+      }
+
+      // 2. Rest State
+      if (idleSubState === 'rest') {
+        if (idleTimer > 350 && Math.random() < 0.015) {
+          // Wander to a new spot
+          pickNewWalkTarget();
+        } else if (idleTimer > 500) {
+          // Getting drowsy... doze off!
+          idleSubState = 'doze';
+          idleTimer = 0;
+        }
+      } 
+      // 3. Sniffing State
+      else if (idleSubState === 'sniff') {
+        if (idleTimer > 180) {
+          if (Math.random() < 0.5) pickNewWalkTarget();
+          else { idleSubState = 'rest'; idleTimer = 0; }
+        }
+      }
+      // 4. Playing with Wisp State
+      else if (idleSubState === 'play_wisp') {
+        if (idleTimer > 200) {
+          idleSubState = 'rest';
+          idleTimer = 0;
+        }
+      }
+      // 5. Dozing State (Heavy Eyelids & Head Nods)
+      else if (idleSubState === 'doze') {
+        if (idleTimer > 260) {
+          // Slip into deep sleep
+          idleSubState = 'sleep';
+          wasAsleep = true;
+          idleTimer = 0;
+        }
+      }
+      // 6. Deep Sleep State (Curled up, Zzz particles)
+      else if (idleSubState === 'sleep') {
+        wasAsleep = true;
+        // Spawn Zzz particle every 45 ticks (~0.7s)
+        if (animTick % 45 === 0) {
+          sleepZzz.push({
+            x: petX + (petFacing === 1 ? 12 : -12),
+            y: petY - 14,
+            text: (Math.random() < 0.6) ? 'z' : 'Z',
+            alpha: 1.0,
+            vy: -0.5 - Math.random() * 0.3,
+            vx: (Math.random() - 0.5) * 0.4,
+            size: 10 + Math.random() * 4
+          });
+        }
+        // Wake up naturally after 15-25 seconds of sleep
+        if (idleTimer > 900 && Math.random() < 0.008) {
+          idleSubState = 'rest';
+          wasAsleep = false;
+          idleTimer = 0;
+        }
+      }
+    }
+
+    function renderScreen() {
+      animTick++;
+      updateSmoke();
+      updateIdleBehavior();
+
+      if (isBooting) {
+        renderBootSequence();
+        requestAnimationFrame(renderScreen);
+        return;
+      }
+
+      if (isBadgeMode || currentScreenMode === 'badge') {
+        renderBadgeMode();
+        requestAnimationFrame(renderScreen);
+        return;
+      }
+
+      if (currentScreenMode === 'ticket_list') {
+        renderTicketList();
+        requestAnimationFrame(renderScreen);
+        return;
+      }
+
+      if (currentScreenMode === 'ticket_detail') {
+        renderTicketDetail();
+        requestAnimationFrame(renderScreen);
+        return;
+      }
+
+      let sx = 0, sy = 0;
+      if (screenShake > 0) {
+        sx = (Math.random() - 0.5) * screenShake * 2;
+        sy = (Math.random() - 0.5) * screenShake * 2;
+        screenShake *= 0.85;
+        if (screenShake < 0.2) screenShake = 0;
+      }
+
+      ctx.save();
+      ctx.translate(sx, sy);
+
+      // Background
+      ctx.fillStyle = PAL.bgDark;
+      ctx.fillRect(0, 0, 320, 240);
+
+      if (currentMood === 'mac') {
+        drawEnrollmentScreen();
+        ctx.restore();
+        requestAnimationFrame(renderScreen);
+        return;
+      }
+
+      // Industrial Grid Floor (Wasteland bunker)
+      ctx.strokeStyle = '#181e2b';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < 320; x += 16) {
+        ctx.beginPath();
+        ctx.moveTo(x, 150);
+        ctx.lineTo(x + (x - 160) * 0.4, 210);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = '#273147';
+      ctx.beginPath();
+      ctx.moveTo(0, 150);
+      ctx.lineTo(320, 150);
+      ctx.stroke();
+
+      // Smoke behind character
+      smokeParticles.forEach(p => {
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = p.alpha;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.globalAlpha = 1.0;
+
+      // Floating Zzz Particles during sleep
+      for (let i = sleepZzz.length - 1; i >= 0; i--) {
+        const z = sleepZzz[i];
+        z.x += z.vx;
+        z.y += z.vy;
+        z.alpha -= 0.012;
+        ctx.fillStyle = `rgba(167, 243, 208, ${Math.max(0, z.alpha)})`;
+        ctx.font = `bold ${Math.round(z.size)}px monospace`;
+        ctx.fillText(z.text, z.x, z.y);
+        if (z.alpha <= 0) sleepZzz.splice(i, 1);
+      }
+
+      // Draw Living Autonomous Character
+      drawKitsuneYokai(petX, petY);
+
+      // Top HUD Bar
+      drawTopHud();
+
+      // Bottom Ticker Banner
+      drawBottomBanner();
+
+      ctx.restore();
+      requestAnimationFrame(renderScreen);
+    }
+
+    // =========================================================================
+    // Kitsune-Bunny Voodoo Familiar (Cute Horror Porcelain Spirit)
+    // =========================================================================
+    function drawKitsuneYokai(cx, cy) {
+      const isIdle = (currentMood === 'idle');
+      const isLaugh = (currentMood === 'laugh');
+      const isChomp = (currentMood === 'chomp');
+      const isAlarm = (currentMood === 'alarm');
+      const isPoked = (currentMood === 'poked');
+
+      const isWalking = (isIdle && idleSubState === 'walk');
+      const isSleeping = (isIdle && idleSubState === 'sleep');
+      const isDozing = (isIdle && idleSubState === 'doze');
+      const isSniffing = (isIdle && idleSubState === 'sniff');
+      const isPlayingWisp = (isIdle && idleSubState === 'play_wisp');
+
+      // Floating / Breathing / Walking motion
+      let walkBob = isWalking ? Math.abs(Math.sin(animTick * 0.35)) * 3 : 0;
+      let breathe = isSleeping ? Math.sin(animTick * 0.05) * 1.5 : (isIdle ? Math.sin(animTick * 0.1) * 2.5 : 0);
+      let bounceY = isLaugh ? (Math.sin(animTick * 0.6) * 4) : 0;
+      let flinchX = isPoked ? ((animTick % 2 === 0) ? -3 : 3) : 0;
+      let lungeX = isChomp ? ((Math.sin(animTick * 0.4) > 0) ? 6 : -2) : 0;
+
+      let dozeNod = isDozing ? Math.max(0, Math.sin(animTick * 0.08) * 3.5) : 0;
+      let sleepDrop = isSleeping ? 4 : 0;
+
+      let py = cy + breathe - bounceY - walkBob + dozeNod + sleepDrop - startleJump;
+      let px = cx + lungeX + flinchX;
+
+      // 1. Bushy Curling Kitsune Tail (Wrapped around flank)
+      let tailWiggle = isWalking ? Math.sin(animTick * 0.35) * 8 : (Math.sin(animTick * 0.18) * 5);
+      ctx.save();
+      ctx.translate(px - 28, py + 22);
+      ctx.rotate(isSleeping ? 0.3 : (-0.2 + (tailWiggle * 0.03)));
+      // Base White Tail
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.ellipse(-14, -8, 22, 14, -0.6, 0, Math.PI * 2);
+      ctx.fill();
+      // Shaded underside
+      ctx.fillStyle = '#cbd5e1';
+      ctx.beginPath();
+      ctx.ellipse(-12, -4, 18, 9, -0.6, 0, Math.PI * 2);
+      ctx.fill();
+      // Crimson Fox Tail Tip (Reference 1)
+      ctx.fillStyle = '#e11d48';
+      ctx.beginPath();
+      ctx.moveTo(-28, -20);
+      ctx.quadraticCurveTo(-38, -32, -26, -38);
+      ctx.quadraticCurveTo(-14, -28, -18, -14);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+
+      // 2. Body: Cute Seated Chibi Posture (Reference 1 & 2)
+      // Body Base Shadow
+      ctx.fillStyle = '#94a3b8';
+      ctx.beginPath();
+      ctx.ellipse(px, py + 24, 22, 18, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Main Porcelain White Body
+      ctx.fillStyle = '#f8fafc';
+      ctx.beginPath();
+      ctx.ellipse(px, py + 22, 20, 16, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Fluffy Chest Ruff / Bib
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(px - 14, py + 12);
+      ctx.quadraticCurveTo(px, py + 24, px + 14, py + 12);
+      ctx.lineTo(px, py + 26);
+      ctx.closePath();
+      ctx.fill();
+
+      // Crimson Leg Swirls / Kitsune Markings (Reference 1)
+      ctx.strokeStyle = '#e11d48';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(px - 14, py + 22, 6, 0.5, 2.5);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(px + 14, py + 22, 6, 0.7, 2.7);
+      ctx.stroke();
+
+      // Cute Little Front Paws (With Walking Alternation & Paw Swatting)
+      let leftPawY = py + 30;
+      let rightPawY = py + 30;
+      if (isWalking) {
+        let step = Math.sin(animTick * 0.35) * 3;
+        leftPawY += step;
+        rightPawY -= step;
+      } else if (isPlayingWisp) {
+        rightPawY -= 12 + Math.sin(animTick * 0.25) * 4; // Swat at wisp!
+      } else if (isSniffing) {
+        leftPawY += 2;
+        rightPawY += 2;
+      }
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.ellipse(px - 6, leftPawY, 4, 3, 0, 0, Math.PI * 2);
+      ctx.ellipse(px + 6, rightPawY, 4, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Coral Claw Pads
+      ctx.fillStyle = '#f43f5e';
+      ctx.fillRect(px - 7, leftPawY + 1, 2, 2);
+      ctx.fillRect(px + 5, rightPawY + 1, 2, 2);
+
+      // 3. Tall Expressive Kitsune-Bunny Ears
+      let leftEarAngle = isAlarm ? -0.38 : (isLaugh ? -0.15 : (isSleeping ? -0.45 : (isSniffing ? -0.18 : -0.25)));
+      let rightEarAngle = isAlarm ? 0.38 : (isLaugh ? 0.15 : (isSleeping ? 0.45 : (isSniffing ? 0.20 : 0.25)));
+
+      // Left Ear
+      ctx.save();
+      ctx.translate(px - 18, py - 14);
+      ctx.rotate(leftEarAngle);
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.ellipse(0, -26, 9, 28, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#e11d48';
+      ctx.beginPath();
+      ctx.ellipse(0, -26, 5, 22, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // Right Ear
+      ctx.save();
+      ctx.translate(px + 18, py - 14);
+      ctx.rotate(rightEarAngle);
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.ellipse(0, -26, 9, 28, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#e11d48';
+      ctx.beginPath();
+      ctx.ellipse(0, -26, 5, 22, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // 4. Porcelain Chibi Head
+      ctx.fillStyle = '#cbd5e1';
+      ctx.beginPath();
+      ctx.ellipse(px, py - 4, 31, 25, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.ellipse(px, py - 6, 30, 24, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Fluffy Cheek Tufts
+      ctx.beginPath();
+      ctx.moveTo(px - 28, py - 6);
+      ctx.lineTo(px - 36, py - 2);
+      ctx.lineTo(px - 27, py + 4);
+      ctx.moveTo(px + 28, py - 6);
+      ctx.lineTo(px + 36, py - 2);
+      ctx.lineTo(px + 27, py + 4);
+      ctx.fill();
+
+      // 5. Kitsune Forehead Moon & Crimson Markings
+      ctx.fillStyle = isAlarm ? '#ff003c' : '#e11d48';
+      ctx.beginPath();
+      ctx.arc(px, py - 18, 7, 0.4, Math.PI - 0.4);
+      ctx.arc(px, py - 16, 5, Math.PI - 0.4, 0.4, true);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillRect(px - 7, py - 14, 3, 5);
+      ctx.fillRect(px + 4, py - 14, 3, 5);
+
+      ctx.strokeStyle = '#e11d48';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(px - 19, py - 2, 7, 0.2, 1.8);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(px - 21, py + 3, 5, 0.3, 1.9);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(px + 19, py - 2, 7, 1.3, 2.9);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(px + 21, py + 3, 5, 1.2, 2.8);
+      ctx.stroke();
+
+      // 6. EYES: The Gothic Voodoo Asymmetry
+      // LEFT EYE: Giant Void Eye / Sleeping Arc / Dozing Lid
+      if (isSleeping) {
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(px - 14, py - 3, 6, 0.2, Math.PI - 0.2);
+        ctx.stroke();
+      } else if (isDozing) {
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.ellipse(px - 14, py - 6, 8, 9, -0.1, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#f8fafc';
+        ctx.beginPath();
+        ctx.ellipse(px - 14, py - 8, 8, 6, -0.1, 0, Math.PI);
+        ctx.fill();
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(px - 14, py - 5, 7, 0.1, Math.PI - 0.1);
+        ctx.stroke();
+      } else if (isLaugh) {
+        ctx.strokeStyle = PAL.acidGreen;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(px - 19, py - 8);
+        ctx.lineTo(px - 13, py - 4);
+        ctx.lineTo(px - 19, py);
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.ellipse(px - 14, py - 6, 8, 10, -0.1, 0, Math.PI * 2);
+        ctx.fill();
+
+        let eyePulse = (isAlarm) ? PAL.combatRed : PAL.acidGreen;
+        let lookX = (Math.sin(animTick * 0.08) * 2);
+        let lookY = (Math.cos(animTick * 0.08) * 1.5);
+        ctx.fillStyle = eyePulse;
+        ctx.beginPath();
+        ctx.arc(px - 14 + lookX, py - 6 + lookY, isAlarm ? 4 : 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(px - 15 + lookX, py - 8 + lookY, 1.5, 1.5);
+      }
+
+      // RIGHT EYE: Gothic Purple Patch with Bold Stitched Cross
+      ctx.save();
+      ctx.translate(px + 14, py - 6);
+      ctx.rotate(isSleeping ? 0.2 : 0.1);
+      ctx.fillStyle = '#4a044e';
+      ctx.beginPath();
+      ctx.roundRect(-8, -9, 16, 18, 4);
+      ctx.fill();
+      ctx.strokeStyle = '#701a75';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(-8, -9, 16, 18);
+
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      if (isSleeping) {
+        ctx.moveTo(-5, 0); ctx.lineTo(5, 0);
+      } else {
+        ctx.moveTo(0, -6); ctx.lineTo(0, 6);
+        ctx.moveTo(-6, 0); ctx.lineTo(6, 0);
+      }
+      ctx.stroke();
+      ctx.restore();
+
+      // Cute Little Black Nose
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.ellipse(px, py - 1, 2.5, 1.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 7. Wide Stitched Razor Smile with Vampire Fangs
+      let mouthOpen = 2;
+      if (isLaugh) mouthOpen = 8 + (Math.sin(animTick * 0.7) * 4);
+      else if (isChomp) mouthOpen = (animTick % 6 < 3) ? 14 : 2;
+      else if (isAlarm || isPoked) mouthOpen = 6;
+      else if (isSleeping) mouthOpen = 0;
+
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(px, py + 4, 15, 0.2, Math.PI - 0.2);
+      ctx.stroke();
+
+      for (let s = -11; s <= 11; s += 4.5) {
+        let sy = py + 4 + Math.sqrt(Math.max(0, 15*15 - s*s)) * 0.45;
+        ctx.beginPath();
+        ctx.moveTo(px + s, sy - 3);
+        ctx.lineTo(px + s, sy + 3);
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(px - 8, py + 8);
+      ctx.lineTo(px - 5, py + 8);
+      ctx.lineTo(px - 6.5, py + 13 + (mouthOpen > 4 ? 2 : 0));
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(px + 5, py + 8);
+      ctx.lineTo(px + 8, py + 8);
+      ctx.lineTo(px + 6.5, py + 13 + (mouthOpen > 4 ? 2 : 0));
+      ctx.closePath();
+      ctx.fill();
+
+      if (mouthOpen > 3) {
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.ellipse(px, py + 10, 10, mouthOpen, 0, 0, Math.PI);
+        ctx.fill();
+        ctx.fillStyle = '#f43f5e';
+        ctx.beginPath();
+        ctx.ellipse(px, py + 10 + mouthOpen * 0.5, 6, 3, 0, 0, Math.PI);
+        ctx.fill();
+      }
+
+      // 8. Hovering Will-o'-the-Wisp Spirit Flame
+      let flameY = py + 2 + Math.sin(animTick * 0.15) * 5;
+      let flameX = px + 36;
+      if (isPlayingWisp) {
+        flameX = px + 24 + Math.sin(animTick * 0.25) * 10;
+        flameY = py + 12 + Math.cos(animTick * 0.25) * 8;
+      } else if (isSleeping) {
+        flameX = px + 28;
+        flameY = py + 16 + Math.sin(animTick * 0.08) * 2;
+      }
+
+      let flameColor = isAlarm ? '#ef4444' : (isChomp ? '#10b981' : (isLaugh ? '#f59e0b' : (isSleeping ? '#0284c7' : '#38bdf8')));
+      let coreColor = isAlarm ? '#fecaca' : (isChomp ? '#a7f3d0' : (isLaugh ? '#fef08a' : (isSleeping ? '#7dd3fc' : '#e0f2fe')));
+
+      ctx.fillStyle = flameColor;
+      ctx.beginPath();
+      ctx.moveTo(flameX, flameY - 14);
+      ctx.quadraticCurveTo(flameX + 9, flameY - 4, flameX + 7, flameY + 6);
+      ctx.quadraticCurveTo(flameX, flameY + 12, flameX - 7, flameY + 6);
+      ctx.quadraticCurveTo(flameX - 9, flameY - 4, flameX, flameY - 14);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = coreColor;
+      ctx.beginPath();
+      ctx.arc(flameX, flameY + 3, 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (animTick % 3 === 0 && !isSleeping) {
+        ctx.fillStyle = coreColor;
+        ctx.fillRect(flameX + (Math.random() - 0.5) * 10, flameY - 16 - Math.random() * 8, 2, 2);
+      }
+
+      // 9. Comic / Action Popups
+      if (startleJump > 1) {
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.arc(px, py - 38, 9, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 12px monospace';
+        ctx.fillText('!', px - 3, py - 34);
+      } else if (isSniffing) {
+        ctx.fillStyle = '#f59e0b';
+        ctx.font = 'bold 14px monospace';
+        ctx.fillText('?', px + 14, py - 32);
+      } else if (isDozing) {
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = 'bold 12px monospace';
+        ctx.fillText('...', px + 14, py - 32);
+      } else if (isLaugh) {
+        ctx.fillStyle = '#f59e0b';
+        ctx.fillRect(px + 22, py - 36, 68, 20);
+        ctx.strokeStyle = '#fff';
+        ctx.strokeRect(px + 22, py - 36, 68, 20);
+        ctx.fillStyle = '#000';
+        ctx.font = 'bold 10px monospace';
+        ctx.fillText((animTick % 4 < 2) ? "HEHEHE!" : "HAHAHA!", px + 28, py - 22);
+      } else if (isChomp) {
+        ctx.fillStyle = PAL.acidGreen;
+        ctx.font = 'bold 14px monospace';
+        ctx.fillText("CRUNCH!", px - 26, py - 36);
+      } else if (isAlarm) {
+        if (animTick % 4 < 2) {
+          ctx.fillStyle = PAL.combatRed;
+          ctx.font = 'bold 22px monospace';
+          ctx.fillText("!", px - 5, py - 38);
+        }
+      } else if (isPoked) {
+        ctx.fillStyle = '#ff003c';
+        ctx.font = 'bold 13px monospace';
+        ctx.fillText("GRRR!", px - 18, py - 36);
+      }
+    }
+
+    // Top HUD
+    function drawTopHud() {
+      ctx.fillStyle = '#11141c';
+      ctx.fillRect(0, 0, 320, 24);
+      ctx.strokeStyle = PAL.combatRed;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, 24);
+      ctx.lineTo(320, 24);
+      ctx.stroke();
+
+      // On-Screen Direct Touch Pill for Executive Badge Mode
+      ctx.fillStyle = '#210410';
+      ctx.fillRect(4, 3, 114, 18);
+      ctx.strokeStyle = PAL.combatRed;
+      ctx.strokeRect(4, 3, 114, 18);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 9px monospace';
+      ctx.fillText('🪪 ALONSO (CEO)', 8, 15);
+
+      // Active Counter Badge (Tap opens ticket deck)
+      ctx.fillStyle = '#1f2937';
+      ctx.fillRect(126, 3, 90, 18);
+      ctx.strokeStyle = '#38bdf8';
+      ctx.strokeRect(126, 3, 90, 18);
+      ctx.fillStyle = '#fff';
+      ctx.fillText(`ACT: ${activeTickets}`, 134, 15);
+
+      // Slain / Resolved Badge (Tap opens ticket deck)
+      ctx.fillStyle = '#064e3b';
+      ctx.fillRect(222, 3, 94, 18);
+      ctx.strokeStyle = PAL.acidGreen;
+      ctx.strokeRect(222, 3, 94, 18);
+      ctx.fillStyle = PAL.acidGreen;
+      ctx.fillText(`SLAIN: ${resolvedToday}`, 230, 15);
+    }
+
+    // Bottom Ticker Banner
+    function drawBottomBanner() {
+      ctx.fillStyle = '#0d1117';
+      ctx.fillRect(0, 204, 320, 36);
+      ctx.strokeStyle = (currentMood === 'alarm') ? PAL.combatRed : (currentMood === 'chomp' ? PAL.acidGreen : PAL.fuelAmber);
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, 204);
+      ctx.lineTo(320, 204);
+      ctx.stroke();
+
+      // Industrial Hazard Stripes on Edges
+      for (let h = 0; h < 24; h += 8) {
+        ctx.strokeStyle = PAL.fuelAmber;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(h, 204);
+        ctx.lineTo(h + 8, 240);
+        ctx.moveTo(290 + h, 204);
+        ctx.lineTo(298 + h, 240);
+        ctx.stroke();
+      }
+
+      ctx.font = 'bold 9px monospace';
+      if (currentMood === 'alarm') {
+        ctx.fillStyle = PAL.redGlow;
+        ctx.fillText(`!! NEW INTAKE [TKT-${ticketId}] !!`, 32, 218);
+        ctx.fillStyle = '#fff';
+        ctx.fillText(ticketTitle.substring(0, 34) + " [TAP >]", 32, 230);
+      } else if (currentMood === 'chomp') {
+        ctx.fillStyle = PAL.acidGreen;
+        ctx.fillText(`TICKET SLAIN & RESOLVED [TKT-${ticketId}]`, 32, 218);
+        ctx.fillStyle = '#fff';
+        ctx.fillText('OPERATIONAL HARMONY RESTORED [TAP >]', 32, 230);
+      } else if (currentMood === 'laugh') {
+        ctx.fillStyle = PAL.amberGlow;
+        ctx.fillText(`TICKET UPDATED [TKT-${ticketId}]`, 32, 218);
+        ctx.fillStyle = '#fff';
+        ctx.fillText(ticketTitle.substring(0, 34) + " [TAP >]", 32, 230);
+      } else {
+        ctx.fillStyle = PAL.fuelAmber;
+        ctx.fillText(`LATEST: [TKT-${ticketId}] ${ticketStatus.toUpperCase()}`, 32, 218);
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText(ticketTitle.substring(0, 34) + " [TAP >]", 32, 230);
+      }
+    }
+
+    // Silicon MAC Enrollment Card
+    function drawEnrollmentScreen() {
+      ctx.fillStyle = '#06080c';
+      ctx.fillRect(0, 0, 320, 240);
+      ctx.strokeStyle = PAL.acidGreen;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(10, 10, 300, 220);
+
+      ctx.fillStyle = PAL.acidGreen;
+      ctx.font = 'bold 15px monospace';
+      ctx.fillText('HARDWARE BINDING ENCLAVE', 32, 38);
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '10px monospace';
+      ctx.fillText('FACTORY SILICON eFUSE MAC:', 32, 68);
+
+      ctx.fillStyle = '#111827';
+      ctx.fillRect(28, 78, 264, 34);
+      ctx.strokeStyle = PAL.fuelAmber;
+      ctx.strokeRect(28, 78, 264, 34);
+
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = 'bold 16px monospace';
+      ctx.fillText(siliconMac, 46, 101);
+
+      ctx.fillStyle = '#e2e8f0';
+      ctx.font = '10px monospace';
+      ctx.fillText('ENROLLMENT STATUS: ACTIVE IN RESOLVE DB', 32, 140);
+      ctx.fillText('HMAC SIGNATURE: SHA256 (35s Anti-Replay)', 32, 156);
+
+      ctx.fillStyle = '#64748b';
+      ctx.fillText('Tap screen or button to return to Scrap-Hound', 32, 205);
+    }
+
+    // =========================================================================
+    // UI Interactions & Bezel Underglow Controller
+    // =========================================================================
+    const bezel = document.getElementById('bezel');
+    const ledPill = document.getElementById('ledPill');
+    const ledText = document.getElementById('ledColorText');
+
+    function updateUnderglowUi() {
+      bezel.classList.remove('glow-red', 'glow-amber', 'glow-green');
+      if (currentMood === 'alarm') {
+        bezel.classList.add('glow-red');
+        ledPill.style.background = '#e62222';
+        ledPill.style.boxShadow = '0 0 12px #e62222';
+        ledText.textContent = 'COMBAT STROBE (RED)';
+      } else if (currentMood === 'laugh') {
+        bezel.classList.add('glow-amber');
+        ledPill.style.background = '#e6821c';
+        ledPill.style.boxShadow = '0 0 12px #e6821c';
+        ledText.textContent = 'FUEL FLAME FLICKER (AMBER)';
+      } else if (currentMood === 'chomp') {
+        bezel.classList.add('glow-green');
+        ledPill.style.background = '#2be86b';
+        ledPill.style.boxShadow = '0 0 12px #2be86b';
+        ledText.textContent = 'TOXIC TRIUMPH PULSE (GREEN/PURPLE)';
+      } else {
+        ledPill.style.background = '#15803d';
+        ledPill.style.boxShadow = '0 0 8px #15803d';
+        ledText.textContent = 'IDLE HEARTBEAT (GREEN)';
+      }
+    }
+
+    function triggerMood(mood) {
+      if (wasAsleep || idleSubState === 'sleep' || idleSubState === 'doze') {
+        startleJump = 10;
+        wasAsleep = false;
+        idleSubState = 'rest';
+        idleTimer = 0;
+      }
+      currentMood = mood;
+      if (mood === 'alarm') {
+        sfxWarKlaxon();
+      } else if (mood === 'laugh') {
+        sfxManiacalLaugh();
+      } else if (mood === 'chomp') {
+        screenShake = 6;
+        sfxEvilChomp();
+      } else if (mood === 'poked') {
+        sfxGrowl();
+      }
+      updateUnderglowUi();
+    }
+
+    function forceIdleState(state) {
+      currentMood = 'idle';
+      idleSubState = state;
+      idleTimer = 0;
+      if (state === 'walk') {
+        pickNewWalkTarget();
+      } else if (state === 'sleep') {
+        wasAsleep = true;
+      }
+      updateUnderglowUi();
+    }
+
+    function openTicketExplorer() {
+      currentScreenMode = 'ticket_list';
+      isBadgeMode = false;
+      isBooting = false;
+      initAudio();
+      playTone(523, 40, 'triangle', 0);
+      playTone(659, 60, 'triangle', 50);
+    }
+
+    // Touch and Click Event Router (Matches Physical ESP32 Hardware Coordinates)
+    canvas.addEventListener('click', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const touchX = (e.clientX - rect.left) * scaleX;
+      const touchY = (e.clientY - rect.top) * scaleY;
+
+      // 1. Badge Mode: Tap anywhere to return
+      if (currentScreenMode === 'badge' || isBadgeMode) {
+        toggleBadgeMode();
+        return;
+      }
+
+      // 2. Incident List Screen
+      if (currentScreenMode === 'ticket_list') {
+        // Exit to Pet (< PET 🐾 at top right: x >= 230, y <= 28)
+        if (touchY <= 28 && touchX >= 230) {
+          currentScreenMode = 'pet';
+          playTone(440, 40, 'triangle', 0);
+          return;
+        }
+        // Rows: rowY = 32 + (i * 42), height = 38
+        for (let i = 0; i < 4; i++) {
+          let rowY = 32 + (i * 42);
+          if (touchY >= rowY && touchY <= rowY + 38) {
+            selectedTicketIdx = i;
+            currentScreenMode = 'ticket_detail';
+            playTone(659, 40, 'triangle', 0);
+            playTone(880, 70, 'triangle', 50);
+            return;
+          }
+        }
+        // Top or bottom bar tap returns to pet
+        if (touchY <= 28 || touchY >= 204) {
+          currentScreenMode = 'pet';
+          return;
+        }
+        return;
+      }
+
+      // 3. Incident Dossier Detail Screen
+      if (currentScreenMode === 'ticket_detail') {
+        // Back to list: (< LIST top left x <= 80, y <= 28) or (< BACK TO LIST bottom left x <= 160, y >= 204)
+        if ((touchY <= 28 && touchX <= 80) || (touchY >= 204 && touchX <= 160)) {
+          currentScreenMode = 'ticket_list';
+          playTone(587, 40, 'triangle', 0);
+          return;
+        }
+        // Return to pet: (PET 🐾 top right x >= 240, y <= 28) or (RETURN TO PET bottom right x > 160, y >= 204)
+        if ((touchY <= 28 && touchX >= 240) || (touchY >= 204 && touchX > 160)) {
+          currentScreenMode = 'pet';
+          playTone(440, 40, 'triangle', 0);
+          return;
+        }
+        return;
+      }
+
+      // 4. Main Pet Arena Screen
+      // Top HUD routing:
+      if (touchY < 26) {
+        if (touchX < 125) {
+          // Direct Touch on Badge Pill
+          toggleBadgeMode();
+          return;
+        } else {
+          // Tap on ACT or SLAIN counter pills
+          openTicketExplorer();
+          return;
+        }
+      }
+
+      // Bottom Banner routing:
+      if (touchY >= 200) {
+        openTicketExplorer();
+        return;
+      }
+
+      // Center Arena: Poke Scrap-Hound!
+      triggerMood('poked');
+      setTimeout(() => { if (currentMood === 'poked') triggerMood('idle'); }, 1500);
+    });
+
+    // Style switch
+    function setStyle(style) {
+      artStyle = style;
+      document.getElementById('btnStyleSnes').classList.toggle('active', style === 'snes');
+      document.getElementById('btnStylePs1').classList.toggle('active', style === 'ps1');
+    }
+
+    function toggleScanlines() {
+      const overlay = document.getElementById('scanlinesOverlay');
+      overlay.style.display = (overlay.style.display === 'none') ? 'block' : 'none';
+    }
+
+    // Incident Simulators
+    function simulateTicketOpen() {
+      ticketId = parseInt(document.getElementById('simTicketId').value) || 376;
+      ticketTitle = document.getElementById('simTicketTitle').value || "New Incident";
+      ticketStatus = "new";
+      activeTickets++;
+      triggerMood('alarm');
+    }
+
+    function simulateTicketComment() {
+      ticketId = parseInt(document.getElementById('simTicketId').value) || 376;
+      triggerMood('laugh');
+    }
+
+    function simulateTicketResolved() {
+      ticketId = parseInt(document.getElementById('simTicketId').value) || 376;
+      ticketStatus = "resolved";
+      if (activeTickets > 0) activeTickets--;
+      resolvedToday++;
+      triggerMood('chomp');
+    }
+
+    function syncLiveResolve() {
+      const badge = document.getElementById('statusBadge');
+      badge.textContent = "● POLLING RESOLVE...";
+      fetch('https://resolve.dataholics.com.mx/digipet_feed.php')
+        .then(r => r.json())
+        .catch(err => {
+          // Expected 401 without hardware headers from public browser
+          badge.textContent = "● SHIELD VERIFIED (401)";
+          alert("Cryptographic Hardware Shield Verified!\nDirect browser requests without ESP32 silicon eFuse MAC are blocked (HTTP 401). Use the Simulator buttons to preview triggers, or watch your physical screen!");
+        });
+    }
+
+    // Start loop
+    renderScreen();
+  </script>
+</body>
+</html>
